@@ -47,7 +47,7 @@ export const SEARCH_MEDIA_QUERY = `
   query SearchMedia(
     $search: String!
     $type: MediaType
-    $genre: String
+    $genre: [String]
     $year: Int
     $format: MediaFormat
     $page: Int
@@ -64,7 +64,7 @@ export const SEARCH_MEDIA_QUERY = `
       media(
         search: $search
         type: $type
-        genre_in: [$genre]  # AniList expects an array for genre filtering
+        genre_in: $genre
         seasonYear: $year
         format: $format
         sort: $sort

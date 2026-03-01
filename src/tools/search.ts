@@ -71,7 +71,7 @@ export function registerSearchTools(server: FastMCP): void {
         };
 
         // Only include optional filters. AniList errors on null/undefined values.
-        if (args.genre) variables.genre = args.genre;
+        if (args.genre) variables.genre = [args.genre];
         if (args.year) variables.year = args.year;
         if (args.format) variables.format = args.format;
 
@@ -215,4 +215,3 @@ export function registerSearchTools(server: FastMCP): void {
     },
   });
 }
-

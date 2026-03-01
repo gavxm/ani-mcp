@@ -140,4 +140,3 @@ function sortEntries(entries: AniListMediaListEntry[], sort: string): void {
       break;
   }
 }
-
