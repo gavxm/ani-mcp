@@ -32,4 +32,17 @@ registerDiscoverTools(server);
 registerInfoTools(server);
 registerWriteTools(server);
 
-server.start({ transportType: "stdio" });
+// === Transport ===
+const transport = process.env.MCP_TRANSPORT === "http" ? "httpStream" : "stdio";
+
+if (transport === "httpStream") {
+  const port = Number(process.env.MCP_PORT) || 3000;
+  const host = process.env.MCP_HOST || "localhost";
+  console.error(`Listening on http://${host}:${port}/mcp`);
+  server.start({
+    transportType: "httpStream",
+    httpStream: { port, host },
+  });
+} else {
+  server.start({ transportType: "stdio" });
+}

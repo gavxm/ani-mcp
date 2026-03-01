@@ -40,6 +40,9 @@ Works with any MCP-compatible client.
 | `ANILIST_USERNAME` | No | Default username for list and stats tools. Can also pass per-call. |
 | `ANILIST_TOKEN` | No | AniList OAuth token. Required for write operations and private lists. |
 | `DEBUG` | No | Set to `true` for debug logging to stderr. |
+| `MCP_TRANSPORT` | No | Set to `http` for HTTP Stream transport. Default: stdio. |
+| `MCP_PORT` | No | Port for HTTP transport. Default: `3000`. |
+| `MCP_HOST` | No | Host for HTTP transport. Default: `localhost`. |
 
 ## Tools
 
