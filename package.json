@@ -1,7 +1,7 @@
 {
   "name": "ani-mcp",
   "mcpName": "io.github.GavMason/ani-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A smart [MCP](https://modelcontextprotocol.io) server for [AniList](https://anilist.co) that gets your anime/manga taste - not just API calls.",
   "type": "module",
   "main": "dist/index.js",
@@ -33,7 +33,10 @@
     "url": "git+https://github.com/GavMason/ani-mcp.git"
   },
   "homepage": "https://github.com/GavMason/ani-mcp",
-  "files": ["dist", "server.json"],
+  "files": [
+    "dist",
+    "server.json"
+  ],
   "engines": {
     "node": ">=18"
   },
