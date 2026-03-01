@@ -212,6 +212,116 @@ export const defaultHandlers = [
       });
     }
 
+    // Trending
+    if (matchQuery(body, "TrendingMedia")) {
+      return gql({
+        Page: {
+          pageInfo: { total: 2, hasNextPage: false },
+          media: defaultMedia.map((m) => ({ ...m, trending: 100 })),
+        },
+      });
+    }
+
+    // Genre browse
+    if (matchQuery(body, "GenreBrowse")) {
+      return gql({
+        Page: {
+          pageInfo: { total: 2, hasNextPage: false },
+          media: defaultMedia,
+        },
+      });
+    }
+
+    // Staff and voice actors
+    if (matchQuery(body, "MediaStaff")) {
+      return gql({
+        Media: {
+          id: 1,
+          title: { romaji: "Test Anime", english: "Test Anime", native: null },
+          format: "TV",
+          siteUrl: "https://anilist.co/anime/1",
+          staff: {
+            edges: [
+              {
+                role: "Director",
+                node: { id: 10, name: { full: "Taro Yamada", native: "山田太郎" }, siteUrl: "https://anilist.co/staff/10" },
+              },
+            ],
+          },
+          characters: {
+            edges: [
+              {
+                role: "MAIN",
+                node: { id: 20, name: { full: "Hero", native: "ヒーロー" }, siteUrl: "https://anilist.co/character/20" },
+                voiceActors: [
+                  { id: 30, name: { full: "Hanako Suzuki", native: "鈴木花子" }, siteUrl: "https://anilist.co/staff/30" },
+                ],
+              },
+            ],
+          },
+        },
+      });
+    }
+
+    // Airing schedule
+    if (matchQuery(body, "AiringSchedule")) {
+      return gql({
+        Media: {
+          id: 1,
+          title: { romaji: "Test Anime", english: "Test Anime", native: null },
+          status: "RELEASING",
+          episodes: 24,
+          nextAiringEpisode: {
+            episode: 5,
+            airingAt: 1700100000,
+            timeUntilAiring: 86400,
+          },
+          airingSchedule: {
+            nodes: [
+              { episode: 5, airingAt: 1700100000, timeUntilAiring: 86400 },
+              { episode: 6, airingAt: 1700700000, timeUntilAiring: 86400 * 8 },
+            ],
+          },
+          siteUrl: "https://anilist.co/anime/1",
+        },
+      });
+    }
+
+    // Character search
+    if (matchQuery(body, "CharacterSearch")) {
+      return gql({
+        Page: {
+          pageInfo: { total: 1, hasNextPage: false },
+          characters: [
+            {
+              id: 1,
+              name: { full: "Naruto Uzumaki", native: "うずまきナルト", alternative: ["Naruto"] },
+              image: { medium: null },
+              favourites: 50000,
+              siteUrl: "https://anilist.co/character/1",
+              media: {
+                edges: [
+                  {
+                    characterRole: "MAIN",
+                    node: {
+                      id: 1,
+                      title: { romaji: "Naruto", english: "Naruto" },
+                      format: "TV",
+                      type: "ANIME",
+                      siteUrl: "https://anilist.co/anime/1",
+                    },
+                    voiceActors: [
+                      { id: 100, name: { full: "Junko Takeuchi" }, siteUrl: "https://anilist.co/staff/100" },
+                    ],
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      });
+    }
+
     // Discover (fallback picks)
     if (matchQuery(body, "DiscoverMedia")) {
       return gql({
@@ -341,6 +451,70 @@ export function statsHandler(userStats: Record<string, unknown>) {
     const body = (await request.json()) as { query?: string };
     if (!matchQuery(body, "UserStats")) return undefined;
     return gql(userStats);
+  });
+}
+
+/** Override trending to return specific media */
+export function trendingHandler(
+  media: Array<ReturnType<typeof makeMedia> & { trending?: number }>,
+) {
+  return http.post(ANILIST_URL, async ({ request }) => {
+    const body = (await request.json()) as { query?: string };
+    if (!matchQuery(body, "TrendingMedia")) return undefined;
+    return gql({
+      Page: {
+        pageInfo: { total: media.length, hasNextPage: false },
+        media: media.map((m) => ({ ...m, trending: m.trending ?? 50 })),
+      },
+    });
+  });
+}
+
+/** Override genre browse to return specific media */
+export function genreBrowseHandler(media: ReturnType<typeof makeMedia>[]) {
+  return http.post(ANILIST_URL, async ({ request }) => {
+    const body = (await request.json()) as { query?: string };
+    if (!matchQuery(body, "GenreBrowse")) return undefined;
+    return gql({
+      Page: {
+        pageInfo: { total: media.length, hasNextPage: false },
+        media,
+      },
+    });
+  });
+}
+
+/** Override staff to return specific data */
+export function staffHandler(staffData: Record<string, unknown>) {
+  return http.post(ANILIST_URL, async ({ request }) => {
+    const body = (await request.json()) as { query?: string };
+    if (!matchQuery(body, "MediaStaff")) return undefined;
+    return gql({ Media: staffData });
+  });
+}
+
+/** Override airing schedule to return specific data */
+export function scheduleHandler(scheduleData: Record<string, unknown>) {
+  return http.post(ANILIST_URL, async ({ request }) => {
+    const body = (await request.json()) as { query?: string };
+    if (!matchQuery(body, "AiringSchedule")) return undefined;
+    return gql({ Media: scheduleData });
+  });
+}
+
+/** Override character search to return specific data */
+export function characterHandler(
+  characters: Array<Record<string, unknown>>,
+) {
+  return http.post(ANILIST_URL, async ({ request }) => {
+    const body = (await request.json()) as { query?: string };
+    if (!matchQuery(body, "CharacterSearch")) return undefined;
+    return gql({
+      Page: {
+        pageInfo: { total: characters.length, hasNextPage: false },
+        characters,
+      },
+    });
   });
 }
 

@@ -6,6 +6,8 @@ import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { registerSearchTools } from "../../src/tools/search.js";
 import { registerListTools } from "../../src/tools/lists.js";
 import { registerRecommendTools } from "../../src/tools/recommend.js";
+import { registerDiscoverTools } from "../../src/tools/discover.js";
+import { registerInfoTools } from "../../src/tools/info.js";
 
 // Capture tool definitions via a proxy
 function collectTools() {
@@ -19,6 +21,8 @@ function collectTools() {
   registerSearchTools(proxy as never);
   registerListTools(proxy as never);
   registerRecommendTools(proxy as never);
+  registerDiscoverTools(proxy as never);
+  registerInfoTools(proxy as never);
 
   return tools;
 }

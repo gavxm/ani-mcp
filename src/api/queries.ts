@@ -232,6 +232,151 @@ export const RECOMMENDATIONS_QUERY = `
   ${MEDIA_FRAGMENT}
 `;
 
+/** Trending anime or manga right now */
+export const TRENDING_MEDIA_QUERY = `
+  query TrendingMedia(
+    $type: MediaType
+    $isAdult: Boolean
+    $page: Int
+    $perPage: Int
+  ) {
+    Page(page: $page, perPage: $perPage) {
+      pageInfo { total hasNextPage }
+      media(type: $type, isAdult: $isAdult, sort: TRENDING_DESC) {
+        ...MediaFields
+        trending
+      }
+    }
+  }
+  ${MEDIA_FRAGMENT}
+`;
+
+/** Browse by genre without a search term, with optional filters */
+export const GENRE_BROWSE_QUERY = `
+  query GenreBrowse(
+    $type: MediaType
+    $genre_in: [String]
+    $year: Int
+    $status: MediaStatus
+    $format: MediaFormat
+    $isAdult: Boolean
+    $sort: [MediaSort]
+    $page: Int
+    $perPage: Int
+  ) {
+    Page(page: $page, perPage: $perPage) {
+      pageInfo { total hasNextPage }
+      media(
+        type: $type
+        genre_in: $genre_in
+        startDate_year: $year
+        status: $status
+        format: $format
+        isAdult: $isAdult
+        sort: $sort
+      ) {
+        ...MediaFields
+      }
+    }
+  }
+  ${MEDIA_FRAGMENT}
+`;
+
+/** Staff and voice actors for a media title */
+export const STAFF_QUERY = `
+  query MediaStaff($id: Int, $search: String) {
+    Media(id: $id, search: $search) {
+      id
+      title { romaji english native }
+      format
+      siteUrl
+      staff(sort: RELEVANCE, perPage: 15) {
+        edges {
+          role
+          node {
+            id
+            name { full native }
+            siteUrl
+          }
+        }
+      }
+      characters(sort: ROLE, perPage: 10) {
+        edges {
+          role
+          node {
+            id
+            name { full native }
+            siteUrl
+          }
+          voiceActors(language: JAPANESE) {
+            id
+            name { full native }
+            siteUrl
+          }
+        }
+      }
+    }
+  }
+`;
+
+/** Airing schedule for currently airing anime */
+export const AIRING_SCHEDULE_QUERY = `
+  query AiringSchedule($id: Int, $search: String, $notYetAired: Boolean) {
+    Media(id: $id, search: $search) {
+      id
+      title { romaji english native }
+      status
+      episodes
+      nextAiringEpisode {
+        episode
+        airingAt
+        timeUntilAiring
+      }
+      airingSchedule(notYetAired: $notYetAired, perPage: 10) {
+        nodes {
+          episode
+          airingAt
+          timeUntilAiring
+        }
+      }
+      siteUrl
+    }
+  }
+`;
+
+/** Search for characters by name */
+export const CHARACTER_SEARCH_QUERY = `
+  query CharacterSearch($search: String!, $page: Int, $perPage: Int) {
+    Page(page: $page, perPage: $perPage) {
+      pageInfo { total hasNextPage }
+      characters(search: $search, sort: FAVOURITES_DESC) {
+        id
+        name { full native alternative }
+        image { medium }
+        favourites
+        siteUrl
+        media(sort: POPULARITY_DESC, perPage: 5) {
+          edges {
+            characterRole
+            node {
+              id
+              title { romaji english }
+              format
+              type
+              siteUrl
+            }
+            voiceActors(language: JAPANESE) {
+              id
+              name { full }
+              siteUrl
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
 /** User's anime/manga list, grouped by status. Omit $status to get all lists. */
 export const USER_LIST_QUERY = `
   query UserMediaList(

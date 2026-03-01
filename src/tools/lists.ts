@@ -9,11 +9,7 @@ import type {
   UserStatsResponse,
   MediaTypeStats,
 } from "../types.js";
-import {
-  getTitle,
-  getDefaultUsername,
-  throwToolError,
-} from "../utils.js";
+import { getTitle, getDefaultUsername, throwToolError } from "../utils.js";
 
 // Map user-friendly sort names to AniList's internal enum values
 const SORT_MAP: Record<string, string[]> = {
@@ -39,7 +35,12 @@ export function registerListTools(server: FastMCP): void {
 
         const sort = SORT_MAP[args.sort] ?? SORT_MAP.UPDATED;
         const status = args.status !== "ALL" ? args.status : undefined;
-        const allEntries = await anilistClient.fetchList(username, args.type, status, sort);
+        const allEntries = await anilistClient.fetchList(
+          username,
+          args.type,
+          status,
+          sort,
+        );
 
         if (!allEntries.length) {
           if (args.status === "ALL") {

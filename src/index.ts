@@ -6,6 +6,8 @@ import { FastMCP } from "fastmcp";
 import { registerSearchTools } from "./tools/search.js";
 import { registerListTools } from "./tools/lists.js";
 import { registerRecommendTools } from "./tools/recommend.js";
+import { registerDiscoverTools } from "./tools/discover.js";
+import { registerInfoTools } from "./tools/info.js";
 
 // Both vars are optional - warn on missing so operators know what's available
 if (!process.env.ANILIST_USERNAME) {
@@ -25,5 +27,7 @@ const server = new FastMCP({
 registerSearchTools(server);
 registerListTools(server);
 registerRecommendTools(server);
+registerDiscoverTools(server);
+registerInfoTools(server);
 
 server.start({ transportType: "stdio" });

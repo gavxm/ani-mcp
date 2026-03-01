@@ -38,7 +38,6 @@ export function getDefaultUsername(provided?: string): string {
   return username;
 }
 
-
 /** Re-throw as a UserError so MCP clients see isError: true */
 export function throwToolError(error: unknown, action: string): never {
   if (error instanceof Error) {

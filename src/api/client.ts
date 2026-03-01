@@ -169,7 +169,10 @@ class AniListClient {
       {
         retries: MAX_RETRIES,
         onFailedAttempt: (err) => {
-          log("retry", `${name} attempt ${err.attemptNumber}/${MAX_RETRIES + 1}`);
+          log(
+            "retry",
+            `${name} attempt ${err.attemptNumber}/${MAX_RETRIES + 1}`,
+          );
         },
       },
     );
@@ -270,7 +273,8 @@ class AniListClient {
       // Prefer GraphQL error status over HTTP status
       const firstError = json.errors[0];
       const status = firstError.status ?? response.status;
-      const retryable = status === 429 || (status !== undefined && status >= 500);
+      const retryable =
+        status === 429 || (status !== undefined && status >= 500);
       const err = new AniListApiError(
         `AniList GraphQL error: ${firstError.message}`,
         status,

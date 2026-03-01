@@ -149,6 +149,111 @@ export interface RecommendationsResponse {
   };
 }
 
+/** Trending media extends AniListMedia with a trending score */
+export interface TrendingMediaResponse {
+  Page: {
+    pageInfo: { total: number; hasNextPage: boolean };
+    media: Array<AniListMedia & { trending: number }>;
+  };
+}
+
+/** Staff and character data for a media title */
+export interface StaffResponse {
+  Media: {
+    id: number;
+    title: {
+      romaji: string | null;
+      english: string | null;
+      native: string | null;
+    };
+    format: string | null;
+    siteUrl: string;
+    staff: {
+      edges: Array<{
+        role: string;
+        node: {
+          id: number;
+          name: { full: string; native: string | null };
+          siteUrl: string;
+        };
+      }>;
+    };
+    characters: {
+      edges: Array<{
+        role: string;
+        node: {
+          id: number;
+          name: { full: string; native: string | null };
+          siteUrl: string;
+        };
+        voiceActors: Array<{
+          id: number;
+          name: { full: string; native: string | null };
+          siteUrl: string;
+        }>;
+      }>;
+    };
+  };
+}
+
+/** Airing schedule for a media title */
+export interface AiringScheduleResponse {
+  Media: {
+    id: number;
+    title: {
+      romaji: string | null;
+      english: string | null;
+      native: string | null;
+    };
+    status: string | null;
+    episodes: number | null;
+    nextAiringEpisode: {
+      episode: number;
+      airingAt: number;
+      timeUntilAiring: number;
+    } | null;
+    airingSchedule: {
+      nodes: Array<{
+        episode: number;
+        airingAt: number;
+        timeUntilAiring: number;
+      }>;
+    };
+    siteUrl: string;
+  };
+}
+
+/** Character search results */
+export interface CharacterSearchResponse {
+  Page: {
+    pageInfo: { total: number; hasNextPage: boolean };
+    characters: Array<{
+      id: number;
+      name: { full: string; native: string | null; alternative: string[] };
+      image: { medium: string | null };
+      favourites: number;
+      siteUrl: string;
+      media: {
+        edges: Array<{
+          characterRole: string;
+          node: {
+            id: number;
+            title: { romaji: string | null; english: string | null };
+            format: string | null;
+            type: string;
+            siteUrl: string;
+          };
+          voiceActors: Array<{
+            id: number;
+            name: { full: string };
+            siteUrl: string;
+          }>;
+        }>;
+      };
+    }>;
+  };
+}
+
 /** Single entry from a user's anime/manga list */
 export interface AniListMediaListEntry {
   id: number;

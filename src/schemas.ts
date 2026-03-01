@@ -241,6 +241,125 @@ export const WrappedInputSchema = z.object({
 
 export type WrappedInput = z.infer<typeof WrappedInputSchema>;
 
+/** Input for trending anime/manga */
+export const TrendingInputSchema = z.object({
+  type: z
+    .enum(["ANIME", "MANGA"])
+    .default("ANIME")
+    .describe("Show trending anime or manga"),
+  isAdult: z
+    .boolean()
+    .default(false)
+    .describe("Include adult (18+) content in results"),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(25)
+    .default(10)
+    .describe("Number of results to return (default 10, max 25)"),
+});
+
+export type TrendingInput = z.infer<typeof TrendingInputSchema>;
+
+/** Input for browsing by genre */
+export const GenreBrowseInputSchema = z.object({
+  genre: z
+    .string()
+    .describe('Genre to browse, e.g. "Action", "Romance", "Horror"'),
+  type: z
+    .enum(["ANIME", "MANGA"])
+    .default("ANIME")
+    .describe("Browse anime or manga"),
+  year: z
+    .number()
+    .int()
+    .min(1940)
+    .max(MAX_YEAR)
+    .optional()
+    .describe("Filter by release year"),
+  status: z
+    .enum(["FINISHED", "RELEASING", "NOT_YET_RELEASED", "CANCELLED", "HIATUS"])
+    .optional()
+    .describe("Filter by airing/publishing status"),
+  format: z
+    .enum([
+      "TV",
+      "MOVIE",
+      "OVA",
+      "ONA",
+      "SPECIAL",
+      "MANGA",
+      "NOVEL",
+      "ONE_SHOT",
+    ])
+    .optional()
+    .describe("Filter by format"),
+  sort: z
+    .enum(["SCORE", "POPULARITY", "TRENDING"])
+    .default("SCORE")
+    .describe("How to rank results"),
+  isAdult: z
+    .boolean()
+    .default(false)
+    .describe("Include adult (18+) content in results"),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(25)
+    .default(10)
+    .describe("Number of results to return (default 10, max 25)"),
+});
+
+export type GenreBrowseInput = z.infer<typeof GenreBrowseInputSchema>;
+
+/** Input for staff/VA credits lookup */
+export const StaffInputSchema = z
+  .object({
+    id: z.number().int().positive().optional().describe("AniList media ID"),
+    title: z.string().optional().describe("Search by title if no ID is known"),
+  })
+  .refine((data) => data.id !== undefined || data.title !== undefined, {
+    message: "Provide either an id or a title.",
+  });
+
+export type StaffInput = z.infer<typeof StaffInputSchema>;
+
+/** Input for airing schedule lookup */
+export const ScheduleInputSchema = z
+  .object({
+    id: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe("AniList media ID for the anime"),
+    title: z.string().optional().describe("Search by title if no ID is known"),
+  })
+  .refine((data) => data.id !== undefined || data.title !== undefined, {
+    message: "Provide either an id or a title.",
+  });
+
+export type ScheduleInput = z.infer<typeof ScheduleInputSchema>;
+
+/** Input for character search */
+export const CharacterSearchInputSchema = z.object({
+  query: z
+    .string()
+    .min(1, "Search query cannot be empty")
+    .describe('Character name to search for, e.g. "Goku", "Levi Ackerman"'),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(10)
+    .default(5)
+    .describe("Number of results to return (default 5, max 10)"),
+});
+
+export type CharacterSearchInput = z.infer<typeof CharacterSearchInputSchema>;
+
 /** Input for community recommendations for a specific title */
 export const RecommendationsInputSchema = z
   .object({

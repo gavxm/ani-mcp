@@ -14,11 +14,7 @@ import type {
   AniListMediaListEntry,
   AniListMedia,
 } from "../types.js";
-import {
-  getTitle,
-  getDefaultUsername,
-  throwToolError,
-} from "../utils.js";
+import { getTitle, getDefaultUsername, throwToolError } from "../utils.js";
 import {
   buildTasteProfile,
   describeTasteProfile,
@@ -374,7 +370,12 @@ export function registerRecommendTools(server: FastMCP): void {
         }
 
         // Genre divergences
-        const divergences = computeGenreDivergences(profile1, profile2, args.user1, args.user2);
+        const divergences = computeGenreDivergences(
+          profile1,
+          profile2,
+          args.user1,
+          args.user2,
+        );
         if (divergences.length > 0) {
           lines.push("Genre Differences:");
           for (const d of divergences) {
@@ -430,7 +431,9 @@ export function registerRecommendTools(server: FastMCP): void {
             : [args.type as "ANIME" | "MANGA"];
 
         const lists = await Promise.all(
-          types.map((type) => anilistClient.fetchList(username, type, "COMPLETED")),
+          types.map((type) =>
+            anilistClient.fetchList(username, type, "COMPLETED"),
+          ),
         );
         const allEntries = lists.flat();
 
