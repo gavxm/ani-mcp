@@ -23,6 +23,7 @@ Thumbs.db
 # npm
 *.tgz
 .npm
+.mcpregistry_*
 
 # Logs
 *.log
