@@ -1,9 +1,9 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.GavMason/ani-mcp",
+  "name": "io.github.gavxm/ani-mcp",
   "description": "A smart MCP server for AniList that gets your anime/manga taste - not just API calls.",
   "repository": {
-    "url": "https://github.com/GavMason/ani-mcp",
+    "url": "https://github.com/gavxm/ani-mcp",
     "source": "github"
   },
   "version": "0.1.1",

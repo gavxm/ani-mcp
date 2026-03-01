@@ -1,6 +1,6 @@
 {
   "name": "ani-mcp",
-  "mcpName": "io.github.GavMason/ani-mcp",
+  "mcpName": "io.github.gavxm/ani-mcp",
   "version": "0.1.1",
   "description": "A smart [MCP](https://modelcontextprotocol.io) server for [AniList](https://anilist.co) that gets your anime/manga taste - not just API calls.",
   "type": "module",
@@ -26,13 +26,13 @@
     "anime",
     "manga"
   ],
-  "author": "Gavin Mason (GavMason)",
+  "author": "gavxm <gavxm@pm.me>",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/GavMason/ani-mcp.git"
+    "url": "git+https://github.com/gavxm/ani-mcp.git"
   },
-  "homepage": "https://github.com/GavMason/ani-mcp",
+  "homepage": "https://github.com/gavxm/ani-mcp",
   "files": [
     "dist",
     "server.json"

@@ -81,7 +81,7 @@ Works with any MCP-compatible client.
 ## Build from Source
 
 ```sh
-git clone https://github.com/GavMason/ani-mcp.git
+git clone https://github.com/gavxm/ani-mcp.git
 cd ani-mcp
 npm install
 npm run build
