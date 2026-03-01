@@ -90,6 +90,15 @@ Works with any MCP-compatible client.
 | `anilist_rate` | Score a title (0-10) |
 | `anilist_delete_from_list` | Remove an entry from your list |
 
+## Docker
+
+```sh
+docker build -t ani-mcp .
+docker run -e ANILIST_USERNAME=your_username ani-mcp
+```
+
+Runs on port 3000 with HTTP Stream transport by default.
+
 ## Build from Source
 
 ```sh
