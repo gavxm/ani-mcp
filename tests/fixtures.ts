@@ -1,0 +1,72 @@
+/** Shared test data factories for AniList types */
+
+import type { AniListMedia, AniListMediaListEntry } from "../src/types.js";
+
+/** Create an AniListMedia with sensible defaults */
+export function makeMedia(
+  overrides: Partial<{
+    genres: string[];
+    tags: Array<{ name: string; rank: number; isMediaSpoiler: boolean }>;
+    meanScore: number;
+    episodes: number;
+    format: string;
+    id: number;
+    popularity: number;
+  }> = {},
+): AniListMedia {
+  return {
+    id: overrides.id ?? 100,
+    title: { romaji: "Test Anime", english: "Test Anime", native: null },
+    format: overrides.format ?? "TV",
+    status: "FINISHED",
+    episodes: overrides.episodes ?? 12,
+    chapters: null,
+    volumes: null,
+    meanScore: overrides.meanScore ?? 75,
+    averageScore: 73,
+    popularity: overrides.popularity ?? 30000,
+    genres: overrides.genres ?? ["Action"],
+    tags: overrides.tags ?? [],
+    season: "SPRING",
+    seasonYear: 2024,
+    startDate: { year: 2024, month: 4, day: null },
+    endDate: { year: 2024, month: 6, day: null },
+    studios: { nodes: [{ name: "Studio" }] },
+    source: "ORIGINAL",
+    coverImage: { large: null },
+    siteUrl: "https://anilist.co/anime/100",
+    description: "A test anime.",
+  };
+}
+
+/** Create an AniListMediaListEntry wrapping a makeMedia call */
+export function makeEntry(
+  overrides: Partial<{
+    score: number;
+    genres: string[];
+    tags: Array<{ name: string; rank: number; isMediaSpoiler: boolean }>;
+    format: string;
+    id: number;
+    popularity: number;
+    updatedAt: number;
+    completedAt: { year: number | null; month: number | null; day: number | null };
+  }> = {},
+): AniListMediaListEntry {
+  return {
+    id: overrides.id ?? 1,
+    score: overrides.score ?? 8,
+    progress: 12,
+    status: "COMPLETED",
+    updatedAt: overrides.updatedAt ?? 1700000000,
+    startedAt: { year: 2023, month: 1, day: 1 },
+    completedAt: overrides.completedAt ?? { year: 2023, month: 3, day: 1 },
+    notes: null,
+    media: makeMedia({
+      genres: overrides.genres,
+      tags: overrides.tags,
+      format: overrides.format,
+      id: overrides.id,
+      popularity: overrides.popularity,
+    }),
+  };
+}

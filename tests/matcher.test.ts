@@ -1,0 +1,126 @@
+import { describe, it, expect } from "vitest";
+import { matchCandidates } from "../src/engine/matcher.js";
+import { buildTasteProfile } from "../src/engine/taste.js";
+import { parseMood } from "../src/engine/mood.js";
+import { makeEntry, makeMedia } from "./fixtures.js";
+
+// Profile from a user who loves psychological thrillers
+function makeThrillerProfile() {
+  const entries = [
+    makeEntry({ score: 10, genres: ["Psychological", "Thriller"], id: 1 }),
+    makeEntry({ score: 9, genres: ["Psychological", "Thriller"], id: 2 }),
+    makeEntry({ score: 9, genres: ["Psychological", "Drama"], id: 3 }),
+    makeEntry({ score: 8, genres: ["Sci-Fi", "Thriller"], id: 4 }),
+    makeEntry({ score: 6, genres: ["Comedy", "Romance"], id: 5 }),
+  ];
+  return buildTasteProfile(entries);
+}
+
+describe("matchCandidates", () => {
+  it("ranks candidates matching user preferences higher", () => {
+    const profile = makeThrillerProfile();
+
+    const candidates = [
+      makeMedia({ genres: ["Comedy", "Romance"], id: 201 }),
+      makeMedia({ genres: ["Psychological", "Thriller"], id: 202 }),
+      makeMedia({ genres: ["Action", "Sci-Fi"], id: 203 }),
+    ];
+
+    const results = matchCandidates(candidates, profile);
+
+    expect(results[0].media.id).toBe(202);
+    expect(results[0].reasons.length).toBeGreaterThan(0);
+  });
+
+  it("filters out titles with low community scores", () => {
+    const profile = makeThrillerProfile();
+
+    const candidates = [
+      makeMedia({ genres: ["Psychological", "Thriller"], meanScore: 40, id: 301 }),
+      makeMedia({ genres: ["Psychological", "Thriller"], meanScore: 80, id: 302 }),
+    ];
+
+    const results = matchCandidates(candidates, profile);
+
+    expect(results.length).toBe(1);
+    expect(results[0].media.id).toBe(302);
+  });
+
+  it("boosts results when mood matches genres", () => {
+    const profile = makeThrillerProfile();
+    const mood = parseMood("something dark and intense");
+
+    const candidates = [
+      makeMedia({ genres: ["Psychological", "Thriller"], id: 401 }),
+      makeMedia({ genres: ["Comedy", "Romance"], id: 402 }),
+    ];
+
+    const withMood = matchCandidates(candidates, profile, mood);
+    const withoutMood = matchCandidates(candidates, profile);
+
+    const thrillerWithMood = withMood.find((r) => r.media.id === 401);
+    const thrillerWithout = withoutMood.find((r) => r.media.id === 401);
+    if (!thrillerWithMood || !thrillerWithout) throw new Error("Expected thriller in results");
+
+    expect(thrillerWithMood.score).toBeGreaterThan(thrillerWithout.score);
+    expect(thrillerWithMood.moodFit).toBe("Strong mood match");
+  });
+
+  it("returns empty array when no candidates pass filters", () => {
+    const profile = makeThrillerProfile();
+
+    const candidates = [
+      makeMedia({ genres: ["Action"], meanScore: 30, id: 501 }),
+    ];
+
+    const results = matchCandidates(candidates, profile);
+    expect(results).toEqual([]);
+  });
+
+  it("scores niche titles slightly higher than equally-matching popular titles", () => {
+    const profile = makeThrillerProfile();
+
+    const candidates = [
+      makeMedia({ genres: ["Psychological", "Thriller"], id: 701, popularity: 200000 }),
+      makeMedia({ genres: ["Psychological", "Thriller"], id: 702, popularity: 500 }),
+    ];
+
+    const results = matchCandidates(candidates, profile);
+    const popular = results.find((r) => r.media.id === 701);
+    const niche = results.find((r) => r.media.id === 702);
+    if (!popular || !niche) throw new Error("Expected both results");
+
+    expect(niche.score).toBeGreaterThan(popular.score);
+  });
+
+  it("includes tag-based reasons when tags overlap", () => {
+    const entries = Array.from({ length: 5 }, (_, i) =>
+      makeEntry({
+        score: 9,
+        genres: ["Sci-Fi"],
+        tags: [
+          { name: "Time Travel", rank: 90, isMediaSpoiler: false },
+          { name: "Mind Games", rank: 80, isMediaSpoiler: false },
+        ],
+        id: i + 1,
+      }),
+    );
+    const profile = buildTasteProfile(entries);
+
+    const candidates = [
+      makeMedia({
+        genres: ["Sci-Fi"],
+        tags: [
+          { name: "Time Travel", rank: 85, isMediaSpoiler: false },
+          { name: "Mind Games", rank: 75, isMediaSpoiler: false },
+        ],
+        id: 601,
+      }),
+    ];
+
+    const results = matchCandidates(candidates, profile);
+    const reasons = results[0].reasons.join(" ");
+
+    expect(reasons).toContain("Time Travel");
+  });
+});

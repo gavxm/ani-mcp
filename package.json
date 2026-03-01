@@ -14,7 +14,9 @@
     "inspect": "npx @modelcontextprotocol/inspector tsx src/index.ts",
     "lint": "eslint src/",
     "format": "prettier --write src/",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest"
   },
   "keywords": [
     "mcp",
@@ -28,12 +30,15 @@
     "dotenv": "^17.3.1",
     "fastmcp": "^3.33.0",
     "lru-cache": "^11.2.6",
+    "msw": "^2.12.10",
     "p-retry": "^7.1.1",
+    "p-throttle": "^8.1.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^25.3.3",
+    "@vitest/coverage-v8": "^4.0.18",
     "eslint": "^10.0.2",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.8.1",
