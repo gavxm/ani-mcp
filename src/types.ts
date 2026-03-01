@@ -17,6 +17,7 @@ export interface AniListTag {
 /** Core media object shared across all query responses */
 export interface AniListMedia {
   id: number;
+  type: string;
   title: {
     romaji: string | null;
     english: string | null;
@@ -40,6 +41,7 @@ export interface AniListMedia {
     nodes: Array<{ name: string }>;
   };
   source: string | null;
+  isAdult: boolean;
   coverImage: { large: string | null };
   siteUrl: string;
   description: string | null;
@@ -87,6 +89,61 @@ export interface MediaDetailsResponse {
           genres: string[];
           siteUrl: string;
         } | null;
+      }>;
+    };
+  };
+}
+
+/** User profile statistics from the User query */
+export interface UserStatsResponse {
+  User: {
+    id: number;
+    name: string;
+    statistics: {
+      anime: MediaTypeStats;
+      manga: MediaTypeStats;
+    };
+  };
+}
+
+/** Per-type (anime or manga) statistics */
+export interface MediaTypeStats {
+  count: number;
+  meanScore: number;
+  minutesWatched?: number;
+  episodesWatched?: number;
+  chaptersRead?: number;
+  volumesRead?: number;
+  genres: Array<{
+    genre: string;
+    count: number;
+    meanScore: number;
+    minutesWatched?: number;
+    chaptersRead?: number;
+  }>;
+  scores: Array<{
+    score: number;
+    count: number;
+  }>;
+  formats: Array<{
+    format: string;
+    count: number;
+  }>;
+}
+
+/** Recommendations response for a single media */
+export interface RecommendationsResponse {
+  Media: {
+    id: number;
+    title: {
+      romaji: string | null;
+      english: string | null;
+      native: string | null;
+    };
+    recommendations: {
+      nodes: Array<{
+        rating: number;
+        mediaRecommendation: AniListMedia | null;
       }>;
     };
   };

@@ -75,3 +75,36 @@ export function formatToolError(error: unknown, action: string): string {
   }
   return `Unexpected error while ${action}. Please try again.`;
 }
+
+/** Format a media entry as a compact multi-line summary */
+export function formatMediaSummary(media: AniListMedia): string {
+  const title = getTitle(media.title);
+  const format = media.format ?? "Unknown format";
+  // Prefer season year, fall back to start date
+  const year = media.seasonYear ?? media.startDate?.year ?? "?";
+  const score = media.meanScore ? `${media.meanScore}/100` : "No score";
+  const genres = media.genres?.length
+    ? media.genres.join(", ")
+    : "No genres listed";
+  const studios = media.studios?.nodes?.length
+    ? media.studios.nodes.map((s) => s.name).join(", ")
+    : null;
+  const nsfw = media.isAdult ? " [18+]" : "";
+
+  // Anime has episodes, manga has chapters/volumes
+  let length = "";
+  if (media.episodes) length = `${media.episodes} episodes`;
+  else if (media.chapters) length = `${media.chapters} chapters`;
+  if (media.volumes) length += ` (${media.volumes} volumes)`;
+
+  const lines = [
+    `${title}${nsfw} (${format}, ${year}) - ${score}`,
+    `  Genres: ${genres}`,
+  ];
+
+  if (length) lines.push(`  Length: ${length}`);
+  if (studios) lines.push(`  Studio: ${studios}`);
+  lines.push(`  URL: ${media.siteUrl}`);
+
+  return lines.join("\n");
+}

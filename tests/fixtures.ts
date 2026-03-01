@@ -16,6 +16,7 @@ export function makeMedia(
 ): AniListMedia {
   return {
     id: overrides.id ?? 100,
+    type: "ANIME",
     title: { romaji: "Test Anime", english: "Test Anime", native: null },
     format: overrides.format ?? "TV",
     status: "FINISHED",
@@ -33,6 +34,7 @@ export function makeMedia(
     endDate: { year: 2024, month: 6, day: null },
     studios: { nodes: [{ name: "Studio" }] },
     source: "ORIGINAL",
+    isAdult: false,
     coverImage: { large: null },
     siteUrl: "https://anilist.co/anime/100",
     description: "A test anime.",

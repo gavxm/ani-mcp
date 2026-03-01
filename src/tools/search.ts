@@ -2,48 +2,29 @@
 
 import type { FastMCP } from "fastmcp";
 import { anilistClient } from "../api/client.js";
-import { SEARCH_MEDIA_QUERY, MEDIA_DETAILS_QUERY } from "../api/queries.js";
-import { SearchInputSchema, DetailsInputSchema } from "../schemas.js";
+import {
+  SEARCH_MEDIA_QUERY,
+  MEDIA_DETAILS_QUERY,
+  SEASONAL_MEDIA_QUERY,
+  RECOMMENDATIONS_QUERY,
+} from "../api/queries.js";
+import {
+  SearchInputSchema,
+  DetailsInputSchema,
+  SeasonalInputSchema,
+  RecommendationsInputSchema,
+} from "../schemas.js";
 import type {
   SearchMediaResponse,
   MediaDetailsResponse,
-  AniListMedia,
+  RecommendationsResponse,
 } from "../types.js";
-import { getTitle, truncateDescription, formatToolError } from "../utils.js";
-
-// === Shared Formatting ===
-
-/** Format a media entry as a compact multi-line summary */
-function formatMediaSummary(media: AniListMedia): string {
-  const title = getTitle(media.title);
-  const format = media.format ?? "Unknown format";
-  // Prefer season year, fall back to start date
-  const year = media.seasonYear ?? media.startDate?.year ?? "?";
-  const score = media.meanScore ? `${media.meanScore}/100` : "No score";
-  const genres = media.genres?.length
-    ? media.genres.join(", ")
-    : "No genres listed";
-  const studios = media.studios?.nodes?.length
-    ? media.studios.nodes.map((s) => s.name).join(", ")
-    : null;
-
-  // Anime has episodes, manga has chapters/volumes
-  let length = "";
-  if (media.episodes) length = `${media.episodes} episodes`;
-  else if (media.chapters) length = `${media.chapters} chapters`;
-  if (media.volumes) length += ` (${media.volumes} volumes)`;
-
-  const lines = [
-    `${title} (${format}, ${year}) - ${score}`,
-    `  Genres: ${genres}`,
-  ];
-
-  if (length) lines.push(`  Length: ${length}`);
-  if (studios) lines.push(`  Studio: ${studios}`);
-  lines.push(`  URL: ${media.siteUrl}`);
-
-  return lines.join("\n");
-}
+import {
+  getTitle,
+  truncateDescription,
+  formatToolError,
+  formatMediaSummary,
+} from "../utils.js";
 
 // Default to popularity for broad queries
 const SEARCH_SORT = ["POPULARITY_DESC"] as const;
@@ -200,7 +181,7 @@ export function registerSearchTools(server: FastMCP): void {
             if (!r) continue;
             const recTitle = r.title.english || r.title.romaji || "?";
             lines.push(
-              `  - ${recTitle} (${r.meanScore ?? "?"}/ 100) - ${r.genres.slice(0, 3).join(", ")}`,
+              `  - ${recTitle} (${r.meanScore ?? "?"}/100) - ${r.genres.slice(0, 3).join(", ")}`,
             ); // top 3 genres only
           }
         }
@@ -213,4 +194,144 @@ export function registerSearchTools(server: FastMCP): void {
       }
     },
   });
+
+  // === Seasonal Browser ===
+
+  server.addTool({
+    name: "anilist_seasonal",
+    description:
+      "Browse anime airing in a given season. " +
+      "Use when the user asks what's airing this season, what aired in a past season, " +
+      "or wants to discover seasonal anime. Defaults to the current season/year.",
+    parameters: SeasonalInputSchema,
+    execute: async (args) => {
+      try {
+        const { season, year } = resolveSeasonYear(args.season, args.year);
+
+        const sortMap: Record<string, string[]> = {
+          POPULARITY: ["POPULARITY_DESC"],
+          SCORE: ["SCORE_DESC"],
+          TRENDING: ["TRENDING_DESC"],
+        };
+
+        const data = await anilistClient.query<SearchMediaResponse>(
+          SEASONAL_MEDIA_QUERY,
+          {
+            season,
+            seasonYear: year,
+            type: "ANIME",
+            sort: sortMap[args.sort] ?? sortMap.POPULARITY,
+            page: 1,
+            perPage: args.limit,
+          },
+          { cache: "seasonal" },
+        );
+
+        const results = data.Page.media;
+
+        if (!results.length) {
+          return `No anime found for ${season} ${year}.`;
+        }
+
+        const header = [
+          `${season} ${year} Anime (${data.Page.pageInfo.total} total, showing ${results.length})`,
+          `Sorted by: ${args.sort.toLowerCase()}`,
+          "",
+        ].join("\n");
+
+        const formatted = results.map(
+          (m, i) => `${i + 1}. ${formatMediaSummary(m)}`,
+        );
+
+        return header + formatted.join("\n\n");
+      } catch (error) {
+        return formatToolError(error, "browsing seasonal anime");
+      }
+    },
+  });
+
+  // === Community Recommendations ===
+
+  server.addTool({
+    name: "anilist_recommendations",
+    description:
+      "Get community recommendations for a specific anime or manga. " +
+      "Use when the user asks for shows similar to a specific title, " +
+      'or says "I liked X, what else should I watch?" ' +
+      "Returns titles recommended by AniList users, sorted by recommendation count.",
+    parameters: RecommendationsInputSchema,
+    execute: async (args) => {
+      try {
+        const variables: Record<string, unknown> = {
+          perPage: args.limit,
+        };
+        if (args.id) variables.id = args.id;
+        if (args.title) variables.search = args.title;
+
+        const data = await anilistClient.query<RecommendationsResponse>(
+          RECOMMENDATIONS_QUERY,
+          variables,
+          { cache: "media" },
+        );
+
+        const source = data.Media;
+        const sourceTitle = getTitle(source.title);
+        const recs = source.recommendations.nodes.filter(
+          (n) => n.mediaRecommendation && n.rating > 0,
+        );
+
+        if (!recs.length) {
+          return `No community recommendations found for "${sourceTitle}".`;
+        }
+
+        const lines: string[] = [
+          `# Recommendations based on ${sourceTitle}`,
+          `${recs.length} community suggestion${recs.length !== 1 ? "s" : ""}:`,
+          "",
+        ];
+
+        for (let i = 0; i < recs.length; i++) {
+          const rec = recs[i];
+          const m = rec.mediaRecommendation;
+          if (!m) continue;
+
+          lines.push(
+            `${i + 1}. ${formatMediaSummary(m)}`,
+            `  Recommended by ${rec.rating} user${rec.rating !== 1 ? "s" : ""}`,
+            "",
+          );
+        }
+
+        return lines.join("\n");
+      } catch (error) {
+        return formatToolError(error, "fetching recommendations");
+      }
+    },
+  });
+}
+
+// === Season Helpers ===
+
+/** Resolve season and year, defaulting to current if not provided */
+function resolveSeasonYear(
+  season?: string,
+  year?: number,
+): { season: string; year: number } {
+  const now = new Date();
+  const currentYear = year ?? now.getFullYear();
+
+  if (season) return { season, year: currentYear };
+
+  // Derive current season from month
+  const month = now.getMonth() + 1;
+  const currentSeason =
+    month <= 3
+      ? "WINTER"
+      : month <= 6
+        ? "SPRING"
+        : month <= 9
+          ? "SUMMER"
+          : "FALL";
+
+  return { season: currentSeason, year: currentYear };
 }

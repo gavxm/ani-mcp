@@ -165,3 +165,87 @@ export const CompareInputSchema = z.object({
 });
 
 export type CompareInput = z.infer<typeof CompareInputSchema>;
+
+const MAX_YEAR = new Date().getFullYear() + 2;
+
+/** Input for browsing anime by season */
+export const SeasonalInputSchema = z.object({
+  season: z
+    .enum(["WINTER", "SPRING", "SUMMER", "FALL"])
+    .optional()
+    .describe("Season to browse. Defaults to the current season."),
+  year: z
+    .number()
+    .int()
+    .min(1940)
+    .max(MAX_YEAR)
+    .optional()
+    .describe("Year to browse. Defaults to the current year."),
+  sort: z
+    .enum(["POPULARITY", "SCORE", "TRENDING"])
+    .default("POPULARITY")
+    .describe("How to rank results"),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(50)
+    .default(15)
+    .describe("Number of results to return (default 15, max 50)"),
+});
+
+export type SeasonalInput = z.infer<typeof SeasonalInputSchema>;
+
+/** Input for fetching user statistics */
+export const StatsInputSchema = z.object({
+  username: z
+    .string()
+    .optional()
+    .describe(
+      "AniList username. Falls back to configured default if not provided.",
+    ),
+});
+
+export type StatsInput = z.infer<typeof StatsInputSchema>;
+
+/** Input for year-in-review summary */
+export const WrappedInputSchema = z.object({
+  username: z
+    .string()
+    .optional()
+    .describe(
+      "AniList username. Falls back to configured default if not provided.",
+    ),
+  year: z
+    .number()
+    .int()
+    .min(2000)
+    .max(MAX_YEAR)
+    .optional()
+    .describe("Year to summarize. Defaults to the current year."),
+  type: z
+    .enum(["ANIME", "MANGA", "BOTH"])
+    .default("BOTH")
+    .describe("Summarize anime, manga, or both"),
+});
+
+export type WrappedInput = z.infer<typeof WrappedInputSchema>;
+
+/** Input for community recommendations for a specific title */
+export const RecommendationsInputSchema = z
+  .object({
+    id: z.number().int().positive().optional().describe("AniList media ID"),
+    title: z.string().optional().describe("Search by title if no ID is known"),
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .max(25)
+      .default(10)
+      .describe("Number of recommendations to return (default 10, max 25)"),
+  })
+  .refine((data) => data.id !== undefined || data.title !== undefined, {
+    message: "Provide either an id or a title.",
+  });
+
+export type RecommendationsInput = z.infer<typeof RecommendationsInputSchema>;

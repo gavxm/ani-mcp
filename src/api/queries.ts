@@ -9,6 +9,7 @@
 const MEDIA_FRAGMENT = `
   fragment MediaFields on Media {
     id
+    type
     title {
       romaji
       english
@@ -36,6 +37,7 @@ const MEDIA_FRAGMENT = `
       nodes { name }
     }
     source
+    isAdult
     coverImage { large }
     siteUrl
     description(asHtml: false)
@@ -121,9 +123,105 @@ export const DISCOVER_MEDIA_QUERY = `
     $sort: [MediaSort]
   ) {
     Page(page: $page, perPage: $perPage) {
-      pageInfo { total }
+      pageInfo { total hasNextPage }
       media(type: $type, genre_in: $genre_in, sort: $sort) {
         ...MediaFields
+      }
+    }
+  }
+  ${MEDIA_FRAGMENT}
+`;
+
+/** Browse anime by season and year */
+export const SEASONAL_MEDIA_QUERY = `
+  query SeasonalMedia(
+    $season: MediaSeason
+    $seasonYear: Int
+    $type: MediaType
+    $sort: [MediaSort]
+    $page: Int
+    $perPage: Int
+  ) {
+    Page(page: $page, perPage: $perPage) {
+      pageInfo { total currentPage lastPage hasNextPage }
+      media(
+        season: $season
+        seasonYear: $seasonYear
+        type: $type
+        sort: $sort
+      ) {
+        ...MediaFields
+      }
+    }
+  }
+  ${MEDIA_FRAGMENT}
+`;
+
+/** User profile statistics - watching/reading stats, genre/tag/score breakdowns */
+export const USER_STATS_QUERY = `
+  query UserStats($name: String!) {
+    User(name: $name) {
+      id
+      name
+      statistics {
+        anime {
+          count
+          meanScore
+          minutesWatched
+          episodesWatched
+          genres(sort: COUNT_DESC, limit: 10) {
+            genre
+            count
+            meanScore
+            minutesWatched
+          }
+          scores(sort: MEAN_SCORE_DESC) {
+            score
+            count
+          }
+          formats(sort: COUNT_DESC) {
+            format
+            count
+          }
+        }
+        manga {
+          count
+          meanScore
+          chaptersRead
+          volumesRead
+          genres(sort: COUNT_DESC, limit: 10) {
+            genre
+            count
+            meanScore
+            chaptersRead
+          }
+          scores(sort: MEAN_SCORE_DESC) {
+            score
+            count
+          }
+          formats(sort: COUNT_DESC) {
+            format
+            count
+          }
+        }
+      }
+    }
+  }
+`;
+
+/** Media recommendations for a given title */
+export const RECOMMENDATIONS_QUERY = `
+  query MediaRecommendations($id: Int, $search: String, $perPage: Int) {
+    Media(id: $id, search: $search) {
+      id
+      title { romaji english native }
+      recommendations(sort: RATING_DESC, perPage: $perPage) {
+        nodes {
+          rating
+          mediaRecommendation {
+            ...MediaFields
+          }
+        }
       }
     }
   }

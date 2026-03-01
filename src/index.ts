@@ -13,9 +13,7 @@ if (!process.env.ANILIST_USERNAME) {
   );
 }
 if (!process.env.ANILIST_TOKEN) {
-  console.warn(
-    "ANILIST_TOKEN not set - authenticated features unavailable.",
-  );
+  console.warn("ANILIST_TOKEN not set - authenticated features unavailable.");
 }
 
 const server = new FastMCP({

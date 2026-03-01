@@ -1,8 +1,14 @@
 /** User list tools: fetch and display a user's anime/manga list. */
 
 import type { FastMCP } from "fastmcp";
-import { ListInputSchema } from "../schemas.js";
-import type { AniListMediaListEntry } from "../types.js";
+import { anilistClient } from "../api/client.js";
+import { USER_STATS_QUERY } from "../api/queries.js";
+import { ListInputSchema, StatsInputSchema } from "../schemas.js";
+import type {
+  AniListMediaListEntry,
+  UserStatsResponse,
+  MediaTypeStats,
+} from "../types.js";
 import {
   getTitle,
   getDefaultUsername,
@@ -67,6 +73,106 @@ export function registerListTools(server: FastMCP): void {
       }
     },
   });
+
+  // === User Statistics ===
+
+  server.addTool({
+    name: "anilist_stats",
+    description:
+      "Get a user's watching/reading statistics. " +
+      "Use when the user asks about their overall stats, how much anime they've watched, " +
+      "their average score, top genres, or score distribution. " +
+      "Shows anime and manga stats side by side.",
+    parameters: StatsInputSchema,
+    execute: async (args) => {
+      try {
+        const username = getDefaultUsername(args.username);
+
+        const data = await anilistClient.query<UserStatsResponse>(
+          USER_STATS_QUERY,
+          { name: username },
+          { cache: "stats" },
+        );
+
+        const { anime, manga } = data.User.statistics;
+        const lines: string[] = [`# Stats for ${data.User.name}`, ""];
+
+        // Anime stats
+        if (anime.count > 0) {
+          lines.push(...formatTypeStats(anime, "Anime"));
+        }
+
+        // Manga stats
+        if (manga.count > 0) {
+          if (anime.count > 0) lines.push("");
+          lines.push(...formatTypeStats(manga, "Manga"));
+        }
+
+        if (anime.count === 0 && manga.count === 0) {
+          return `${username} has no anime or manga statistics.`;
+        }
+
+        return lines.join("\n");
+      } catch (error) {
+        return formatToolError(error, "fetching stats");
+      }
+    },
+  });
+}
+
+/** Format statistics for a single media type (anime or manga) */
+function formatTypeStats(stats: MediaTypeStats, label: string): string[] {
+  const lines: string[] = [`## ${label}`];
+
+  // Volume summary
+  const items = [
+    `${stats.count} titles`,
+    `Mean score: ${stats.meanScore.toFixed(1)}`,
+  ];
+  if (stats.episodesWatched)
+    items.push(`${stats.episodesWatched.toLocaleString()} episodes`);
+  if (stats.minutesWatched) {
+    const days = (stats.minutesWatched / 1440).toFixed(1);
+    items.push(`${days} days watched`);
+  }
+  if (stats.chaptersRead)
+    items.push(`${stats.chaptersRead.toLocaleString()} chapters`);
+  if (stats.volumesRead)
+    items.push(`${stats.volumesRead.toLocaleString()} volumes`);
+  lines.push(items.join(" | "));
+
+  // Top genres by count
+  if (stats.genres.length > 0) {
+    lines.push("", "Top Genres:");
+    for (const g of stats.genres.slice(0, 5)) {
+      lines.push(
+        `  ${g.genre}: ${g.count} titles (avg ${g.meanScore.toFixed(1)})`,
+      );
+    }
+  }
+
+  // Score distribution
+  if (stats.scores.length > 0) {
+    lines.push("", "Score Distribution:");
+    // Scores are already sorted by MEAN_SCORE_DESC
+    const sorted = [...stats.scores].sort((a, b) => b.score - a.score);
+    for (const s of sorted) {
+      if (s.count > 0) {
+        const bar = "#".repeat(Math.min(s.count, 30));
+        lines.push(`  ${s.score}/10: ${bar} (${s.count})`);
+      }
+    }
+  }
+
+  // Format breakdown
+  if (stats.formats.length > 0) {
+    const fmtParts = stats.formats
+      .slice(0, 5)
+      .map((f) => `${f.format}: ${f.count}`);
+    lines.push("", `Formats: ${fmtParts.join(", ")}`);
+  }
+
+  return lines;
 }
 
 /** Format a single list entry with title, progress, score, and update date */
