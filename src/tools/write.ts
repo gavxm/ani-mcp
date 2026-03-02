@@ -45,7 +45,7 @@ export function registerWriteTools(server: FastMCP): void {
     annotations: {
       title: "Update Progress",
       readOnlyHint: false,
-      destructiveHint: false,
+      destructiveHint: true,
       idempotentHint: true,
       openWorldHint: true,
     },
@@ -92,7 +92,7 @@ export function registerWriteTools(server: FastMCP): void {
     annotations: {
       title: "Add to List",
       readOnlyHint: false,
-      destructiveHint: false,
+      destructiveHint: true,
       idempotentHint: true,
       openWorldHint: true,
     },
@@ -139,7 +139,7 @@ export function registerWriteTools(server: FastMCP): void {
     annotations: {
       title: "Rate Title",
       readOnlyHint: false,
-      destructiveHint: false,
+      destructiveHint: true,
       idempotentHint: true,
       openWorldHint: true,
     },
