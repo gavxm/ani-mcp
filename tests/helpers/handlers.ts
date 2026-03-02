@@ -322,6 +322,100 @@ export const defaultHandlers = [
       });
     }
 
+    // Staff search
+    if (matchQuery(body, "StaffSearch")) {
+      return gql({
+        Page: {
+          pageInfo: { total: 1, hasNextPage: false },
+          staff: [
+            {
+              id: 100,
+              name: { full: "Taro Yamada", native: "山田太郎" },
+              primaryOccupations: ["Director", "Writer"],
+              siteUrl: "https://anilist.co/staff/100",
+              staffMedia: {
+                edges: [
+                  {
+                    staffRole: "Director",
+                    node: {
+                      id: 1,
+                      title: { romaji: "Test Anime", english: "Test Anime" },
+                      format: "TV",
+                      type: "ANIME",
+                      meanScore: 85,
+                      siteUrl: "https://anilist.co/anime/1",
+                    },
+                  },
+                  {
+                    staffRole: "Script",
+                    node: {
+                      id: 1,
+                      title: { romaji: "Test Anime", english: "Test Anime" },
+                      format: "TV",
+                      type: "ANIME",
+                      meanScore: 85,
+                      siteUrl: "https://anilist.co/anime/1",
+                    },
+                  },
+                  {
+                    staffRole: "Director",
+                    node: {
+                      id: 2,
+                      title: { romaji: "Another Anime", english: "Another Anime" },
+                      format: "MOVIE",
+                      type: "ANIME",
+                      meanScore: 90,
+                      siteUrl: "https://anilist.co/anime/2",
+                    },
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      });
+    }
+
+    // Studio search
+    if (matchQuery(body, "StudioSearch")) {
+      return gql({
+        Studio: {
+          id: 1,
+          name: "Test Studio",
+          isAnimationStudio: true,
+          siteUrl: "https://anilist.co/studio/1",
+          media: {
+            edges: [
+              {
+                isMainStudio: true,
+                node: {
+                  id: 1,
+                  title: { romaji: "Test Anime", english: "Test Anime" },
+                  format: "TV",
+                  type: "ANIME",
+                  status: "FINISHED",
+                  meanScore: 85,
+                  siteUrl: "https://anilist.co/anime/1",
+                },
+              },
+              {
+                isMainStudio: false,
+                node: {
+                  id: 2,
+                  title: { romaji: "Collab Anime", english: "Collab Anime" },
+                  format: "TV",
+                  type: "ANIME",
+                  status: "RELEASING",
+                  meanScore: 78,
+                  siteUrl: "https://anilist.co/anime/2",
+                },
+              },
+            ],
+          },
+        },
+      });
+    }
+
     // Save list entry
     if (matchQuery(body, "SaveMediaListEntry")) {
       return gql({
@@ -569,5 +663,30 @@ export function deleteEntryHandler(deleted: boolean) {
     const body = (await request.json()) as { query?: string };
     if (!matchQuery(body, "DeleteMediaListEntry")) return undefined;
     return gql({ DeleteMediaListEntry: { deleted } });
+  });
+}
+
+/** Override staff search to return specific results */
+export function staffSearchHandler(
+  staff: Array<Record<string, unknown>>,
+) {
+  return http.post(ANILIST_URL, async ({ request }) => {
+    const body = (await request.json()) as { query?: string };
+    if (!matchQuery(body, "StaffSearch")) return undefined;
+    return gql({
+      Page: {
+        pageInfo: { total: staff.length, hasNextPage: false },
+        staff,
+      },
+    });
+  });
+}
+
+/** Override studio search to return specific data */
+export function studioSearchHandler(studio: Record<string, unknown>) {
+  return http.post(ANILIST_URL, async ({ request }) => {
+    const body = (await request.json()) as { query?: string };
+    if (!matchQuery(body, "StudioSearch")) return undefined;
+    return gql({ Studio: studio });
   });
 }

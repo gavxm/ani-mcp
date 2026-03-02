@@ -448,3 +448,57 @@ export const USER_LIST_QUERY = `
   }
   ${MEDIA_FRAGMENT}
 `;
+
+/** Search for staff by name with their top works */
+export const STAFF_SEARCH_QUERY = `
+  query StaffSearch($search: String!, $perPage: Int, $mediaPerPage: Int) {
+    Page(perPage: $perPage) {
+      pageInfo { total hasNextPage }
+      staff(search: $search, sort: SEARCH_MATCH) {
+        id
+        name { full native }
+        primaryOccupations
+        siteUrl
+        staffMedia(sort: POPULARITY_DESC, perPage: $mediaPerPage) {
+          edges {
+            staffRole
+            node {
+              id
+              title { romaji english }
+              format
+              type
+              meanScore
+              siteUrl
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
+/** Search for a studio by name with their productions */
+export const STUDIO_SEARCH_QUERY = `
+  query StudioSearch($search: String!, $perPage: Int) {
+    Studio(search: $search, sort: SEARCH_MATCH) {
+      id
+      name
+      isAnimationStudio
+      siteUrl
+      media(sort: POPULARITY_DESC, perPage: $perPage) {
+        edges {
+          isMainStudio
+          node {
+            id
+            title { romaji english }
+            format
+            type
+            status
+            meanScore
+            siteUrl
+          }
+        }
+      }
+    }
+  }
+`;

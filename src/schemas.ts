@@ -491,3 +491,44 @@ export const SimilarInputSchema = z.object({
 });
 
 export type SimilarInput = z.infer<typeof SimilarInputSchema>;
+
+/** Input for searching staff/people by name */
+export const StaffSearchInputSchema = z.object({
+  query: z
+    .string()
+    .min(1, "Search query cannot be empty")
+    .describe('Staff name to search for, e.g. "Miyazaki", "Kana Hanazawa"'),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(10)
+    .default(3)
+    .describe("Number of staff results to return (default 3, max 10)"),
+  mediaLimit: z
+    .number()
+    .int()
+    .min(1)
+    .max(25)
+    .default(10)
+    .describe("Works per person to show (default 10, max 25)"),
+});
+
+export type StaffSearchInput = z.infer<typeof StaffSearchInputSchema>;
+
+/** Input for searching studios by name */
+export const StudioSearchInputSchema = z.object({
+  query: z
+    .string()
+    .min(1, "Search query cannot be empty")
+    .describe('Studio name to search for, e.g. "MAPPA", "Kyoto Animation"'),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(25)
+    .default(10)
+    .describe("Number of works to show (default 10, max 25)"),
+});
+
+export type StudioSearchInput = z.infer<typeof StudioSearchInputSchema>;

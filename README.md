@@ -72,12 +72,16 @@ Works with any MCP-compatible client.
 | `anilist_pick` | Personalized "what to watch next" based on taste and mood |
 | `anilist_compare` | Compare taste compatibility between two users |
 | `anilist_wrapped` | Year-in-review summary |
+| `anilist_explain` | "Why would I like this?" - score a title against your taste profile |
+| `anilist_similar` | Find titles similar to a given anime or manga |
 
 ### Info
 
 | Tool | Description |
 | --- | --- |
 | `anilist_staff` | Staff credits and voice actors for a title |
+| `anilist_staff_search` | Search for a person by name and see all their works |
+| `anilist_studio_search` | Search for a studio and see their productions |
 | `anilist_schedule` | Airing schedule and next episode countdown |
 | `anilist_characters` | Search characters by name with appearances and VAs |
 

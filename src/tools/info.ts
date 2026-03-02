@@ -6,16 +6,22 @@ import {
   STAFF_QUERY,
   AIRING_SCHEDULE_QUERY,
   CHARACTER_SEARCH_QUERY,
+  STAFF_SEARCH_QUERY,
+  STUDIO_SEARCH_QUERY,
 } from "../api/queries.js";
 import {
   StaffInputSchema,
   ScheduleInputSchema,
   CharacterSearchInputSchema,
+  StaffSearchInputSchema,
+  StudioSearchInputSchema,
 } from "../schemas.js";
 import type {
   StaffResponse,
   AiringScheduleResponse,
   CharacterSearchResponse,
+  StaffSearchResponse,
+  StudioSearchResponse,
 } from "../types.js";
 import { getTitle, throwToolError } from "../utils.js";
 
@@ -227,6 +233,151 @@ export function registerInfoTools(server: FastMCP): void {
         return lines.join("\n");
       } catch (error) {
         return throwToolError(error, "searching characters");
+      }
+    },
+  });
+
+  // === Staff Search ===
+
+  server.addTool({
+    name: "anilist_staff_search",
+    description:
+      "Search for anime/manga staff by name and see their works. " +
+      "Use when the user asks about a director, voice actor, animator, or writer " +
+      "and wants to see everything they have worked on.",
+    parameters: StaffSearchInputSchema,
+    execute: async (args) => {
+      try {
+        const data = await anilistClient.query<StaffSearchResponse>(
+          STAFF_SEARCH_QUERY,
+          { search: args.query, perPage: args.limit, mediaPerPage: args.mediaLimit },
+          { cache: "search" },
+        );
+
+        const results = data.Page.staff;
+
+        if (!results.length) {
+          return `No staff found matching "${args.query}".`;
+        }
+
+        const lines: string[] = [
+          `Found ${data.Page.pageInfo.total} staff matching "${args.query}"`,
+          "",
+        ];
+
+        for (const person of results) {
+          const native = person.name.native ? ` (${person.name.native})` : "";
+          const occupations = person.primaryOccupations.length
+            ? ` - ${person.primaryOccupations.join(", ")}`
+            : "";
+          lines.push(`## ${person.name.full}${native}${occupations}`);
+
+          // Dedupe media by ID and group roles
+          const mediaMap = new Map<
+            number,
+            { title: string; format: string | null; score: number | null; url: string; roles: string[] }
+          >();
+          for (const edge of person.staffMedia.edges) {
+            const existing = mediaMap.get(edge.node.id);
+            if (existing) {
+              existing.roles.push(edge.staffRole);
+            } else {
+              mediaMap.set(edge.node.id, {
+                title: edge.node.title.english || edge.node.title.romaji,
+                format: edge.node.format,
+                score: edge.node.meanScore,
+                url: edge.node.siteUrl,
+                roles: [edge.staffRole],
+              });
+            }
+          }
+
+          if (mediaMap.size === 0) {
+            lines.push("  No works found.");
+          } else {
+            let i = 1;
+            for (const work of mediaMap.values()) {
+              const format = work.format ? ` (${work.format})` : "";
+              const score = work.score ? ` - ${work.score}%` : "";
+              lines.push(`  ${i}. ${work.title}${format}${score}`);
+              lines.push(`     Role: ${work.roles.join(", ")}`);
+              i++;
+            }
+          }
+
+          lines.push(`  URL: ${person.siteUrl}`, "");
+        }
+
+        return lines.join("\n");
+      } catch (error) {
+        return throwToolError(error, "searching staff");
+      }
+    },
+  });
+
+  // === Studio Search ===
+
+  server.addTool({
+    name: "anilist_studio_search",
+    description:
+      "Search for an animation studio by name and see their productions. " +
+      "Use when the user asks about a studio like MAPPA, Kyoto Animation, or Bones " +
+      "and wants to see what they have produced.",
+    parameters: StudioSearchInputSchema,
+    execute: async (args) => {
+      try {
+        const data = await anilistClient.query<StudioSearchResponse>(
+          STUDIO_SEARCH_QUERY,
+          { search: args.query, perPage: args.limit },
+          { cache: "search" },
+        );
+
+        const studio = data.Studio;
+        const tag = studio.isAnimationStudio ? "Animation Studio" : "Studio";
+
+        const lines: string[] = [
+          `# ${studio.name} (${tag})`,
+          "",
+        ];
+
+        // Main productions first, then supporting
+        const main = studio.media.edges.filter((e) => e.isMainStudio);
+        const supporting = studio.media.edges.filter((e) => !e.isMainStudio);
+
+        if (main.length > 0) {
+          lines.push("## Main Productions");
+          for (let i = 0; i < main.length; i++) {
+            const m = main[i].node;
+            const title = m.title.english || m.title.romaji;
+            const format = m.format ? ` (${m.format})` : "";
+            const score = m.meanScore ? ` - ${m.meanScore}%` : "";
+            const status = m.status ? ` [${m.status.replace(/_/g, " ")}]` : "";
+            lines.push(`  ${i + 1}. ${title}${format}${score}${status}`);
+          }
+          lines.push("");
+        }
+
+        if (supporting.length > 0) {
+          lines.push("## Supporting");
+          for (let i = 0; i < supporting.length; i++) {
+            const m = supporting[i].node;
+            const title = m.title.english || m.title.romaji;
+            const format = m.format ? ` (${m.format})` : "";
+            const score = m.meanScore ? ` - ${m.meanScore}%` : "";
+            lines.push(`  ${i + 1}. ${title}${format}${score}`);
+          }
+          lines.push("");
+        }
+
+        if (main.length === 0 && supporting.length === 0) {
+          lines.push("No productions found.", "");
+        }
+
+        lines.push(`AniList: ${studio.siteUrl}`);
+
+        return lines.join("\n");
+      } catch (error) {
+        return throwToolError(error, "searching studios");
       }
     },
   });

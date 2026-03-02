@@ -295,3 +295,53 @@ export interface UserListResponse {
     }>;
   };
 }
+
+/** Paginated staff search results with works per person */
+export interface StaffSearchResponse {
+  Page: {
+    pageInfo: { total: number; hasNextPage: boolean };
+    staff: Array<{
+      id: number;
+      name: { full: string; native: string | null };
+      primaryOccupations: string[];
+      siteUrl: string;
+      staffMedia: {
+        edges: Array<{
+          staffRole: string;
+          node: {
+            id: number;
+            title: { romaji: string; english: string | null };
+            format: string | null;
+            type: string;
+            meanScore: number | null;
+            siteUrl: string;
+          };
+        }>;
+      };
+    }>;
+  };
+}
+
+/** Single studio with production history */
+export interface StudioSearchResponse {
+  Studio: {
+    id: number;
+    name: string;
+    isAnimationStudio: boolean;
+    siteUrl: string;
+    media: {
+      edges: Array<{
+        isMainStudio: boolean;
+        node: {
+          id: number;
+          title: { romaji: string; english: string | null };
+          format: string | null;
+          type: string;
+          status: string | null;
+          meanScore: number | null;
+          siteUrl: string;
+        };
+      }>;
+    };
+  };
+}
