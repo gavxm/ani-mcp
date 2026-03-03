@@ -4,6 +4,11 @@
 
 # ani-mcp
 
+[![npm version](https://img.shields.io/npm/v/ani-mcp)](https://www.npmjs.com/package/ani-mcp)
+[![CI](https://github.com/gavxm/ani-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/gavxm/ani-mcp/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Node](https://img.shields.io/node/v/ani-mcp)](https://nodejs.org)
+
 A smart [MCP](https://modelcontextprotocol.io) server for [AniList](https://anilist.co) that understands your anime and manga taste - not just raw API calls.
 
 ## What makes this different
