@@ -294,6 +294,7 @@ export interface UserListResponse {
     lists: Array<{
       name: string;
       status: string;
+      isCustomList: boolean;
       entries: AniListMediaListEntry[];
     }>;
   };
@@ -355,6 +356,111 @@ export interface GenreTagCollectionResponse {
     category: string;
     isAdult: boolean;
   }>;
+}
+
+// === 0.4.0 Social & Favourites ===
+
+/** Response from toggling a favourite */
+export interface ToggleFavouriteResponse {
+  ToggleFavourite: {
+    anime: { nodes: Array<{ id: number }> };
+    manga: { nodes: Array<{ id: number }> };
+    characters: { nodes: Array<{ id: number }> };
+    staff: { nodes: Array<{ id: number }> };
+    studios: { nodes: Array<{ id: number }> };
+  };
+}
+
+/** Response from posting a text activity */
+export interface SaveTextActivityResponse {
+  SaveTextActivity: {
+    id: number;
+    createdAt: number;
+    text: string;
+    user: { name: string };
+  };
+}
+
+/** Text-based activity on a user's feed */
+export interface TextActivity {
+  __typename: "TextActivity";
+  id: number;
+  text: string;
+  createdAt: number;
+  user: { name: string };
+}
+
+/** List update activity on a user's feed */
+export interface ListActivity {
+  __typename: "ListActivity";
+  id: number;
+  status: string;
+  progress: string | null;
+  createdAt: number;
+  user: { name: string };
+  media: {
+    id: number;
+    title: { romaji: string | null; english: string | null; native: string | null };
+    type: string;
+  };
+}
+
+/** Union of activity types returned by the feed query */
+export type Activity = TextActivity | ListActivity;
+
+/** Paginated activity feed response */
+export interface ActivityFeedResponse {
+  Page: {
+    pageInfo: { total: number; currentPage: number; hasNextPage: boolean };
+    activities: Activity[];
+  };
+}
+
+/** User profile with bio, stats, and favourites */
+export interface UserProfileResponse {
+  User: {
+    id: number;
+    name: string;
+    about: string | null;
+    avatar: { large: string | null };
+    bannerImage: string | null;
+    siteUrl: string;
+    createdAt: number;
+    updatedAt: number;
+    donatorTier: number;
+    statistics: {
+      anime: { count: number; meanScore: number; episodesWatched: number; minutesWatched: number };
+      manga: { count: number; meanScore: number; chaptersRead: number; volumesRead: number };
+    };
+    favourites: {
+      anime: { nodes: Array<{ id: number; title: { romaji: string | null; english: string | null; native: string | null }; siteUrl: string }> };
+      manga: { nodes: Array<{ id: number; title: { romaji: string | null; english: string | null; native: string | null }; siteUrl: string }> };
+      characters: { nodes: Array<{ id: number; name: { full: string }; siteUrl: string }> };
+      staff: { nodes: Array<{ id: number; name: { full: string }; siteUrl: string }> };
+      studios: { nodes: Array<{ id: number; name: string; siteUrl: string }> };
+    };
+  };
+}
+
+/** Community reviews for a media title */
+export interface MediaReviewsResponse {
+  Media: {
+    id: number;
+    title: { romaji: string | null; english: string | null; native: string | null };
+    reviews: {
+      pageInfo: { total: number; hasNextPage: boolean };
+      nodes: Array<{
+        id: number;
+        score: number;
+        summary: string;
+        body: string;
+        rating: number;
+        ratingAmount: number;
+        createdAt: number;
+        user: { name: string; siteUrl: string };
+      }>;
+    };
+  };
 }
 
 /** Single studio with production history */

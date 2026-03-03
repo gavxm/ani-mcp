@@ -21,8 +21,11 @@ jq --arg v "$VERSION" '.version = $v | .packages[0].version = $v' server.json > 
 # Bump manifest.json
 jq --arg v "$VERSION" '.version = $v' manifest.json > manifest.tmp && mv manifest.tmp manifest.json
 
+# Bump hardcoded version in src/index.ts
+sed -i '' "s/version: \"[0-9]*\.[0-9]*\.[0-9]*\"/version: \"${VERSION}\"/" src/index.ts
+
 # Commit, tag, push
-git add package.json package-lock.json server.json manifest.json
+git add package.json package-lock.json server.json manifest.json src/index.ts
 git commit -m "v${VERSION}"
 git tag "v${VERSION}"
 git push origin main "v${VERSION}"

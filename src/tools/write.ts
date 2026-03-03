@@ -1,10 +1,12 @@
-/** Write tools: update progress, add to list, rate, and delete entries. */
+/** Write tools: list mutations, favourites, and activity posting. */
 
 import type { FastMCP } from "fastmcp";
 import { anilistClient } from "../api/client.js";
 import {
   SAVE_MEDIA_LIST_ENTRY_MUTATION,
   DELETE_MEDIA_LIST_ENTRY_MUTATION,
+  TOGGLE_FAVOURITE_MUTATION,
+  SAVE_TEXT_ACTIVITY_MUTATION,
   VIEWER_QUERY,
 } from "../api/queries.js";
 import {
@@ -12,10 +14,14 @@ import {
   AddToListInputSchema,
   RateInputSchema,
   DeleteFromListInputSchema,
+  FavouriteInputSchema,
+  PostActivityInputSchema,
 } from "../schemas.js";
 import type {
   SaveMediaListEntryResponse,
   DeleteMediaListEntryResponse,
+  ToggleFavouriteResponse,
+  SaveTextActivityResponse,
   ViewerResponse,
 } from "../types.js";
 import { throwToolError, formatScore, detectScoreFormat } from "../utils.js";
@@ -226,6 +232,119 @@ export function registerWriteTools(server: FastMCP): void {
           : `Entry ${args.entryId} was not found or already removed.`;
       } catch (error) {
         return throwToolError(error, "deleting from list");
+      }
+    },
+  });
+
+  // === Toggle Favourite ===
+
+  // Map entity type to mutation variable name
+  const FAVOURITE_VAR_MAP: Record<string, string> = {
+    ANIME: "animeId",
+    MANGA: "mangaId",
+    CHARACTER: "characterId",
+    STAFF: "staffId",
+    STUDIO: "studioId",
+  };
+
+  // Map entity type to response field name
+  const FAVOURITE_FIELD_MAP: Record<
+    string,
+    keyof ToggleFavouriteResponse["ToggleFavourite"]
+  > = {
+    ANIME: "anime",
+    MANGA: "manga",
+    CHARACTER: "characters",
+    STAFF: "staff",
+    STUDIO: "studios",
+  };
+
+  server.addTool({
+    name: "anilist_favourite",
+    description:
+      "Toggle favourite on an anime, manga, character, staff member, or studio. " +
+      "Calling again on the same entity removes it from favourites. " +
+      "Requires ANILIST_TOKEN.",
+    parameters: FavouriteInputSchema,
+    annotations: {
+      title: "Toggle Favourite",
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
+    execute: async (args) => {
+      try {
+        requireAuth();
+
+        const variables = { [FAVOURITE_VAR_MAP[args.type]]: args.id };
+
+        const data = await anilistClient.query<ToggleFavouriteResponse>(
+          TOGGLE_FAVOURITE_MUTATION,
+          variables,
+          { cache: null },
+        );
+
+        anilistClient.clearCache();
+
+        // Check if entity is now in favourites (added) or absent (removed)
+        const field = FAVOURITE_FIELD_MAP[args.type];
+        const isFavourited = data.ToggleFavourite[field].nodes.some(
+          (n) => n.id === args.id,
+        );
+        const label = args.type.toLowerCase();
+
+        return isFavourited
+          ? `Added ${label} ${args.id} to favourites.`
+          : `Removed ${label} ${args.id} from favourites.`;
+      } catch (error) {
+        return throwToolError(error, "toggling favourite");
+      }
+    },
+  });
+
+  // === Post Activity ===
+
+  server.addTool({
+    name: "anilist_activity",
+    description:
+      "Post a text activity to your AniList feed. " +
+      "Use when the user wants to share a status update, thought, or message. " +
+      "Requires ANILIST_TOKEN.",
+    parameters: PostActivityInputSchema,
+    annotations: {
+      title: "Post Activity",
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
+    execute: async (args) => {
+      try {
+        requireAuth();
+
+        const data = await anilistClient.query<SaveTextActivityResponse>(
+          SAVE_TEXT_ACTIVITY_MUTATION,
+          { text: args.text },
+          { cache: null },
+        );
+
+        anilistClient.clearCache();
+
+        const activity = data.SaveTextActivity;
+        const dateStr = new Date(activity.createdAt * 1000).toLocaleDateString(
+          "en-US",
+          { month: "short", day: "numeric", year: "numeric" },
+        );
+
+        return [
+          `Activity posted.`,
+          `By: ${activity.user.name}`,
+          `Date: ${dateStr}`,
+          `Activity ID: ${activity.id}`,
+        ].join("\n");
+      } catch (error) {
+        return throwToolError(error, "posting activity");
       }
     },
   });

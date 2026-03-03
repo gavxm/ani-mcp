@@ -46,9 +46,14 @@ export function registerListTools(server: FastMCP): void {
     execute: async (args) => {
       try {
         const username = getDefaultUsername(args.username);
-
-        // Fetch list and score format in parallel
         const sort = SORT_MAP[args.sort] ?? SORT_MAP.UPDATED;
+
+        // Custom list path: fetch all groups and filter to custom lists
+        if (args.status === "CUSTOM") {
+          return await handleCustomLists(username, args, sort);
+        }
+
+        // Standard path: fetch list and score format in parallel
         const status = args.status !== "ALL" ? args.status : undefined;
         const [allEntries, scoreFormat] = await Promise.all([
           anilistClient.fetchList(username, args.type, status, sort),
@@ -154,6 +159,77 @@ export function registerListTools(server: FastMCP): void {
       }
     },
   });
+}
+
+/** Fetch and format custom lists for a user */
+async function handleCustomLists(
+  username: string,
+  args: { type: string; sort: string; limit: number; page: number; customListName?: string },
+  sort: string[],
+): Promise<string> {
+  const groups = await anilistClient.fetchListGroups(username, args.type, undefined, sort);
+  let customLists = groups.filter((g) => g.isCustomList);
+
+  if (!customLists.length) {
+    return `${username} has no custom ${args.type.toLowerCase()} lists.`;
+  }
+
+  // Filter to a specific named list
+  if (args.customListName) {
+    const target = args.customListName.toLowerCase();
+    const match = customLists.filter(
+      (g) => g.name.toLowerCase() === target,
+    );
+    if (!match.length) {
+      const names = customLists.map((g) => g.name).join(", ");
+      return `Custom list "${args.customListName}" not found. Available: ${names}`;
+    }
+    customLists = match;
+  }
+
+  // Flatten entries from matching custom lists
+  const allEntries: AniListMediaListEntry[] = [];
+  for (const list of customLists) {
+    allEntries.push(...list.entries);
+  }
+
+  if (!allEntries.length) {
+    const listLabel = args.customListName
+      ? `custom list "${args.customListName}"`
+      : "custom lists";
+    return `${username}'s ${listLabel} have no entries.`;
+  }
+
+  sortEntries(allEntries, args.sort);
+
+  // Detect score format
+  const scoreFormat = await detectScoreFormat(async () => {
+    const data = await anilistClient.query<UserStatsResponse>(
+      USER_STATS_QUERY,
+      { name: username },
+      { cache: "stats" },
+    );
+    return data.User.mediaListOptions.scoreFormat;
+  });
+
+  const totalCount = allEntries.length;
+  const offset = (args.page - 1) * args.limit;
+  const limited = allEntries.slice(offset, offset + args.limit);
+  const hasNextPage = offset + args.limit < totalCount;
+
+  const listLabel = args.customListName
+    ? `custom list "${args.customListName}"`
+    : `custom lists (${customLists.length} lists)`;
+  const header =
+    `${username}'s ${args.type} ${listLabel} - ${totalCount} entries` +
+    (totalCount > limited.length ? `, showing ${limited.length}` : "");
+
+  const formatted = limited.map((entry, i) =>
+    formatListEntry(entry, offset + i + 1, scoreFormat),
+  );
+
+  const footer = paginationFooter(args.page, args.limit, totalCount, hasNextPage);
+  return header + "\n\n" + formatted.join("\n\n") + (footer ? `\n\n${footer}` : "");
 }
 
 /** Format statistics for a single media type (anime or manga) */

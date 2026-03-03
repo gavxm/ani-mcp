@@ -145,6 +145,7 @@ export const defaultHandlers = [
             {
               name: "Completed",
               status: "COMPLETED",
+              isCustomList: false,
               entries: defaultEntries,
             },
           ],
@@ -442,6 +443,132 @@ export const defaultHandlers = [
       });
     }
 
+    // Toggle favourite
+    if (matchQuery(body, "ToggleFavourite")) {
+      // Determine which category was toggled and add the ID
+      const vars = body.variables ?? {};
+      const anime = vars.animeId ? [{ id: vars.animeId }] : [];
+      const manga = vars.mangaId ? [{ id: vars.mangaId }] : [];
+      const characters = vars.characterId ? [{ id: vars.characterId }] : [];
+      const staff = vars.staffId ? [{ id: vars.staffId }] : [];
+      const studios = vars.studioId ? [{ id: vars.studioId }] : [];
+      return gql({
+        ToggleFavourite: {
+          anime: { nodes: anime },
+          manga: { nodes: manga },
+          characters: { nodes: characters },
+          staff: { nodes: staff },
+          studios: { nodes: studios },
+        },
+      });
+    }
+
+    // Post text activity
+    if (matchQuery(body, "SaveTextActivity")) {
+      return gql({
+        SaveTextActivity: {
+          id: 1000,
+          createdAt: 1700000000,
+          text: (body.variables?.text as string) ?? "",
+          user: { name: "testuser" },
+        },
+      });
+    }
+
+    // Activity feed
+    if (matchQuery(body, "ActivityFeed")) {
+      return gql({
+        Page: {
+          pageInfo: { total: 2, currentPage: 1, hasNextPage: false },
+          activities: [
+            {
+              __typename: "TextActivity",
+              id: 1,
+              text: "Just finished a great anime!",
+              createdAt: 1700000000,
+              user: { name: "testuser" },
+            },
+            {
+              __typename: "ListActivity",
+              id: 2,
+              status: "watched episode",
+              progress: "5",
+              createdAt: 1699990000,
+              user: { name: "testuser" },
+              media: {
+                id: 1,
+                title: { romaji: "Test Anime", english: "Test Anime", native: null },
+                type: "ANIME",
+              },
+            },
+          ],
+        },
+      });
+    }
+
+    // User profile
+    if (matchQuery(body, "UserProfile")) {
+      return gql({
+        User: {
+          id: 1,
+          name: body.variables?.name ?? "testuser",
+          about: "I love anime!",
+          avatar: { large: null },
+          bannerImage: null,
+          siteUrl: "https://anilist.co/user/testuser",
+          createdAt: 1500000000,
+          updatedAt: 1700000000,
+          donatorTier: 0,
+          statistics: {
+            anime: { count: 50, meanScore: 7.5, episodesWatched: 600, minutesWatched: 30000 },
+            manga: { count: 10, meanScore: 7.0, chaptersRead: 500, volumesRead: 40 },
+          },
+          favourites: {
+            anime: { nodes: [{ id: 1, title: { romaji: "Fav Anime", english: "Fav Anime", native: null }, siteUrl: "https://anilist.co/anime/1" }] },
+            manga: { nodes: [] },
+            characters: { nodes: [{ id: 20, name: { full: "Hero" }, siteUrl: "https://anilist.co/character/20" }] },
+            staff: { nodes: [] },
+            studios: { nodes: [{ id: 1, name: "Studio", siteUrl: "https://anilist.co/studio/1" }] },
+          },
+        },
+      });
+    }
+
+    // Media reviews
+    if (matchQuery(body, "MediaReviews")) {
+      return gql({
+        Media: {
+          id: (body.variables?.id as number) ?? 1,
+          title: { romaji: "Test Anime", english: "Test Anime", native: null },
+          reviews: {
+            pageInfo: { total: 2, hasNextPage: false },
+            nodes: [
+              {
+                id: 1,
+                score: 80,
+                summary: "A great anime",
+                body: "This anime has excellent animation and storytelling.",
+                rating: 15,
+                ratingAmount: 20,
+                createdAt: 1700000000,
+                user: { name: "reviewer1", siteUrl: "https://anilist.co/user/reviewer1" },
+              },
+              {
+                id: 2,
+                score: 65,
+                summary: "Decent but flawed",
+                body: "Good start but the ending was rushed.",
+                rating: 8,
+                ratingAmount: 12,
+                createdAt: 1699900000,
+                user: { name: "reviewer2", siteUrl: "https://anilist.co/user/reviewer2" },
+              },
+            ],
+          },
+        },
+      });
+    }
+
     // Save list entry
     if (matchQuery(body, "SaveMediaListEntry")) {
       return gql({
@@ -503,7 +630,7 @@ export function searchHandler(
   pageInfo?: { total: number; hasNextPage: boolean },
 ) {
   return http.post(ANILIST_URL, async ({ request }) => {
-    const body = (await request.json()) as { query?: string };
+    const body = (await request.clone().json()) as { query?: string };
     if (!matchQuery(body, "SearchMedia")) return undefined;
     return gql({
       Page: {
@@ -525,7 +652,7 @@ export function listHandler(
   status = "COMPLETED",
 ) {
   return http.post(ANILIST_URL, async ({ request }) => {
-    const body = (await request.json()) as { query?: string };
+    const body = (await request.clone().json()) as { query?: string };
     if (!matchQuery(body, "MediaListCollection")) return undefined;
     return gql({
       MediaListCollection: {
@@ -542,7 +669,7 @@ export function detailsHandler(
   media: Record<string, unknown>,
 ) {
   return http.post(ANILIST_URL, async ({ request }) => {
-    const body = (await request.json()) as { query?: string };
+    const body = (await request.clone().json()) as { query?: string };
     if (!matchQuery(body, "MediaDetails")) return undefined;
     return gql({ Media: media });
   });
@@ -554,7 +681,7 @@ export function seasonalHandler(
   pageInfo?: { total: number; hasNextPage: boolean },
 ) {
   return http.post(ANILIST_URL, async ({ request }) => {
-    const body = (await request.json()) as { query?: string };
+    const body = (await request.clone().json()) as { query?: string };
     if (!matchQuery(body, "SeasonalMedia")) return undefined;
     return gql({
       Page: {
@@ -579,7 +706,7 @@ export function recommendationsHandler(
   }>,
 ) {
   return http.post(ANILIST_URL, async ({ request }) => {
-    const body = (await request.json()) as { query?: string };
+    const body = (await request.clone().json()) as { query?: string };
     if (!matchQuery(body, "MediaRecommendations")) return undefined;
     return gql({
       Media: {
@@ -594,7 +721,7 @@ export function recommendationsHandler(
 /** Override stats to return specific data */
 export function statsHandler(userStats: Record<string, unknown>) {
   return http.post(ANILIST_URL, async ({ request }) => {
-    const body = (await request.json()) as { query?: string };
+    const body = (await request.clone().json()) as { query?: string };
     if (!matchQuery(body, "UserStats")) return undefined;
     return gql(userStats);
   });
@@ -606,7 +733,7 @@ export function trendingHandler(
   pageInfo?: { total: number; hasNextPage: boolean },
 ) {
   return http.post(ANILIST_URL, async ({ request }) => {
-    const body = (await request.json()) as { query?: string };
+    const body = (await request.clone().json()) as { query?: string };
     if (!matchQuery(body, "TrendingMedia")) return undefined;
     return gql({
       Page: {
@@ -623,7 +750,7 @@ export function genreBrowseHandler(
   pageInfo?: { total: number; hasNextPage: boolean },
 ) {
   return http.post(ANILIST_URL, async ({ request }) => {
-    const body = (await request.json()) as { query?: string };
+    const body = (await request.clone().json()) as { query?: string };
     if (!matchQuery(body, "GenreBrowse")) return undefined;
     return gql({
       Page: {
@@ -637,7 +764,7 @@ export function genreBrowseHandler(
 /** Override staff to return specific data */
 export function staffHandler(staffData: Record<string, unknown>) {
   return http.post(ANILIST_URL, async ({ request }) => {
-    const body = (await request.json()) as { query?: string };
+    const body = (await request.clone().json()) as { query?: string };
     if (!matchQuery(body, "MediaStaff")) return undefined;
     return gql({ Media: staffData });
   });
@@ -646,7 +773,7 @@ export function staffHandler(staffData: Record<string, unknown>) {
 /** Override airing schedule to return specific data */
 export function scheduleHandler(scheduleData: Record<string, unknown>) {
   return http.post(ANILIST_URL, async ({ request }) => {
-    const body = (await request.json()) as { query?: string };
+    const body = (await request.clone().json()) as { query?: string };
     if (!matchQuery(body, "AiringSchedule")) return undefined;
     return gql({ Media: scheduleData });
   });
@@ -658,7 +785,7 @@ export function characterHandler(
   pageInfo?: { total: number; hasNextPage: boolean },
 ) {
   return http.post(ANILIST_URL, async ({ request }) => {
-    const body = (await request.json()) as { query?: string };
+    const body = (await request.clone().json()) as { query?: string };
     if (!matchQuery(body, "CharacterSearch")) return undefined;
     return gql({
       Page: {
@@ -688,7 +815,7 @@ export function graphqlErrorHandler(message: string, status?: number) {
 /** Override save entry to return specific data */
 export function saveEntryHandler(response: Record<string, unknown>) {
   return http.post(ANILIST_URL, async ({ request }) => {
-    const body = (await request.json()) as { query?: string };
+    const body = (await request.clone().json()) as { query?: string };
     if (!matchQuery(body, "SaveMediaListEntry")) return undefined;
     return gql({ SaveMediaListEntry: response });
   });
@@ -697,7 +824,7 @@ export function saveEntryHandler(response: Record<string, unknown>) {
 /** Override delete entry to return specific result */
 export function deleteEntryHandler(deleted: boolean) {
   return http.post(ANILIST_URL, async ({ request }) => {
-    const body = (await request.json()) as { query?: string };
+    const body = (await request.clone().json()) as { query?: string };
     if (!matchQuery(body, "DeleteMediaListEntry")) return undefined;
     return gql({ DeleteMediaListEntry: { deleted } });
   });
@@ -709,7 +836,7 @@ export function staffSearchHandler(
   pageInfo?: { total: number; hasNextPage: boolean },
 ) {
   return http.post(ANILIST_URL, async ({ request }) => {
-    const body = (await request.json()) as { query?: string };
+    const body = (await request.clone().json()) as { query?: string };
     if (!matchQuery(body, "StaffSearch")) return undefined;
     return gql({
       Page: {
@@ -723,7 +850,7 @@ export function staffSearchHandler(
 /** Override studio search to return specific data */
 export function studioSearchHandler(studio: Record<string, unknown>) {
   return http.post(ANILIST_URL, async ({ request }) => {
-    const body = (await request.json()) as { query?: string };
+    const body = (await request.clone().json()) as { query?: string };
     if (!matchQuery(body, "StudioSearch")) return undefined;
     return gql({ Studio: studio });
   });
@@ -732,7 +859,7 @@ export function studioSearchHandler(studio: Record<string, unknown>) {
 /** Override viewer to return specific data */
 export function viewerHandler(viewer: Record<string, unknown>) {
   return http.post(ANILIST_URL, async ({ request }) => {
-    const body = (await request.json()) as { query?: string };
+    const body = (await request.clone().json()) as { query?: string };
     if (!matchQuery(body, "Viewer")) return undefined;
     return gql({ Viewer: viewer });
   });
@@ -744,8 +871,81 @@ export function genreTagHandler(
   tags: Array<Record<string, unknown>>,
 ) {
   return http.post(ANILIST_URL, async ({ request }) => {
-    const body = (await request.json()) as { query?: string };
+    const body = (await request.clone().json()) as { query?: string };
     if (!matchQuery(body, "GenreTagCollection")) return undefined;
     return gql({ GenreCollection: genres, MediaTagCollection: tags });
+  });
+}
+
+/** Override favourite toggle to return specific data */
+export function favouriteHandler(response: Record<string, unknown>) {
+  return http.post(ANILIST_URL, async ({ request }) => {
+    const body = (await request.clone().json()) as { query?: string };
+    if (!matchQuery(body, "ToggleFavourite")) return undefined;
+    return gql({ ToggleFavourite: response });
+  });
+}
+
+/** Override activity feed to return specific activities */
+export function feedHandler(
+  activities: Array<Record<string, unknown>>,
+  pageInfo?: { total: number; hasNextPage: boolean },
+) {
+  return http.post(ANILIST_URL, async ({ request }) => {
+    const body = (await request.clone().json()) as { query?: string };
+    if (!matchQuery(body, "ActivityFeed")) return undefined;
+    return gql({
+      Page: {
+        pageInfo: {
+          total: pageInfo?.total ?? activities.length,
+          currentPage: 1,
+          hasNextPage: pageInfo?.hasNextPage ?? false,
+        },
+        activities,
+      },
+    });
+  });
+}
+
+/** Override user profile to return specific data */
+export function profileHandler(user: Record<string, unknown>) {
+  return http.post(ANILIST_URL, async ({ request }) => {
+    const body = (await request.clone().json()) as { query?: string };
+    if (!matchQuery(body, "UserProfile")) return undefined;
+    return gql({ User: user });
+  });
+}
+
+/** Override reviews to return specific data */
+export function reviewsHandler(media: Record<string, unknown>) {
+  return http.post(ANILIST_URL, async ({ request }) => {
+    const body = (await request.clone().json()) as { query?: string };
+    if (!matchQuery(body, "MediaReviews")) return undefined;
+    return gql({ Media: media });
+  });
+}
+
+/** Override list to return specific groups (with isCustomList support) */
+export function listGroupsHandler(
+  lists: Array<{
+    name: string;
+    status: string;
+    isCustomList: boolean;
+    entries: ReturnType<typeof makeEntry>[];
+  }>,
+) {
+  return http.post(ANILIST_URL, async ({ request }) => {
+    const body = (await request.clone().json()) as { query?: string };
+    if (!matchQuery(body, "MediaListCollection")) return undefined;
+    return gql({ MediaListCollection: { lists } });
+  });
+}
+
+/** Override post activity to return specific data */
+export function activityHandler(activity: Record<string, unknown>) {
+  return http.post(ANILIST_URL, async ({ request }) => {
+    const body = (await request.clone().json()) as { query?: string };
+    if (!matchQuery(body, "SaveTextActivity")) return undefined;
+    return gql({ SaveTextActivity: activity });
   });
 }

@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { createTestClient } from "../helpers/server.js";
 import { mswServer } from "../helpers/msw.js";
-import { saveEntryHandler, deleteEntryHandler } from "../helpers/handlers.js";
+import {
+  saveEntryHandler,
+  deleteEntryHandler,
+  favouriteHandler,
+} from "../helpers/handlers.js";
 
 let callTool: Awaited<ReturnType<typeof createTestClient>>["callTool"];
 let cleanup: Awaited<ReturnType<typeof createTestClient>>["cleanup"];
@@ -208,6 +212,85 @@ describe("anilist_delete_from_list", () => {
     try {
       const result = await callTool("anilist_delete_from_list", {
         entryId: 1,
+      });
+      expect(result).toContain("ANILIST_TOKEN");
+    } finally {
+      process.env.ANILIST_TOKEN = saved;
+    }
+  });
+});
+
+// === anilist_favourite ===
+
+describe("anilist_favourite", () => {
+  it("reports added when entity is in response nodes", async () => {
+    const result = await callTool("anilist_favourite", {
+      type: "ANIME",
+      id: 42,
+    });
+    expect(result).toContain("Added");
+    expect(result).toContain("anime");
+    expect(result).toContain("42");
+  });
+
+  it("reports removed when entity is absent from response nodes", async () => {
+    mswServer.use(
+      favouriteHandler({
+        anime: { nodes: [] },
+        manga: { nodes: [] },
+        characters: { nodes: [] },
+        staff: { nodes: [] },
+        studios: { nodes: [] },
+      }),
+    );
+    const result = await callTool("anilist_favourite", {
+      type: "ANIME",
+      id: 42,
+    });
+    expect(result).toContain("Removed");
+    expect(result).toContain("anime");
+  });
+
+  it("handles each entity type", async () => {
+    for (const type of ["MANGA", "CHARACTER", "STAFF", "STUDIO"] as const) {
+      const result = await callTool("anilist_favourite", { type, id: 1 });
+      expect(result).toContain(type.toLowerCase());
+    }
+  });
+
+  it("errors when ANILIST_TOKEN is missing", async () => {
+    const saved = process.env.ANILIST_TOKEN;
+    delete process.env.ANILIST_TOKEN;
+    try {
+      const result = await callTool("anilist_favourite", {
+        type: "ANIME",
+        id: 1,
+      });
+      expect(result).toContain("ANILIST_TOKEN");
+    } finally {
+      process.env.ANILIST_TOKEN = saved;
+    }
+  });
+});
+
+// === anilist_activity ===
+
+describe("anilist_activity", () => {
+  it("returns confirmation with activity ID", async () => {
+    const result = await callTool("anilist_activity", {
+      text: "Hello world!",
+    });
+    expect(result).toContain("Activity posted");
+    expect(result).toContain("Activity ID: 1000");
+    expect(result).toContain("testuser");
+  });
+
+  it("errors when ANILIST_TOKEN is missing", async () => {
+    const saved = process.env.ANILIST_TOKEN;
+    delete process.env.ANILIST_TOKEN;
+    try {
+      const result = await callTool("anilist_activity", {
+        text: "Hello!",
       });
       expect(result).toContain("ANILIST_TOKEN");
     } finally {

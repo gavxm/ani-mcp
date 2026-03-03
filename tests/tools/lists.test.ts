@@ -3,7 +3,7 @@
 import { describe, it, expect, afterAll, afterEach, beforeAll } from "vitest";
 import { createTestClient } from "../helpers/server.js";
 import { mswServer } from "../helpers/msw.js";
-import { listHandler, statsHandler } from "../helpers/handlers.js";
+import { listHandler, listGroupsHandler, statsHandler } from "../helpers/handlers.js";
 import { makeEntry } from "../fixtures.js";
 
 let callTool: Awaited<ReturnType<typeof createTestClient>>["callTool"];
@@ -281,5 +281,141 @@ describe("anilist_stats", () => {
 
     const result = await callTool("anilist_stats", { username: "emptyuser" });
     expect(result).toContain("no anime or manga statistics");
+  });
+});
+
+// === Custom Lists ===
+
+describe("anilist_list with CUSTOM status", () => {
+  it("returns custom list entries", async () => {
+    mswServer.use(
+      listGroupsHandler([
+        {
+          name: "Completed",
+          status: "COMPLETED",
+          isCustomList: false,
+          entries: [makeEntry({ id: 1, score: 9 })],
+        },
+        {
+          name: "Favourites",
+          status: "COMPLETED",
+          isCustomList: true,
+          entries: [makeEntry({ id: 2, score: 10 })],
+        },
+      ]),
+    );
+
+    const result = await callTool("anilist_list", {
+      username: "testuser",
+      type: "ANIME",
+      status: "CUSTOM",
+      sort: "SCORE",
+      limit: 10,
+    });
+
+    expect(result).toContain("custom lists");
+    expect(result).toContain("Test Anime");
+  });
+
+  it("filters by custom list name", async () => {
+    mswServer.use(
+      listGroupsHandler([
+        {
+          name: "Top Picks",
+          status: "COMPLETED",
+          isCustomList: true,
+          entries: [makeEntry({ id: 1, score: 10 })],
+        },
+        {
+          name: "Rewatching",
+          status: "CURRENT",
+          isCustomList: true,
+          entries: [makeEntry({ id: 2, score: 8 })],
+        },
+      ]),
+    );
+
+    const result = await callTool("anilist_list", {
+      username: "testuser",
+      type: "ANIME",
+      status: "CUSTOM",
+      customListName: "Top Picks",
+      sort: "SCORE",
+      limit: 10,
+    });
+
+    expect(result).toContain("Top Picks");
+    expect(result).toContain("1 entries");
+  });
+
+  it("shows error when named custom list not found", async () => {
+    mswServer.use(
+      listGroupsHandler([
+        {
+          name: "Favourites",
+          status: "COMPLETED",
+          isCustomList: true,
+          entries: [makeEntry({ id: 1 })],
+        },
+      ]),
+    );
+
+    const result = await callTool("anilist_list", {
+      username: "testuser",
+      type: "ANIME",
+      status: "CUSTOM",
+      customListName: "Nonexistent",
+      sort: "SCORE",
+      limit: 10,
+    });
+
+    expect(result).toContain("not found");
+    expect(result).toContain("Favourites");
+  });
+
+  it("shows empty message when custom list has no entries", async () => {
+    mswServer.use(
+      listGroupsHandler([
+        {
+          name: "Empty List",
+          status: "COMPLETED",
+          isCustomList: true,
+          entries: [],
+        },
+      ]),
+    );
+
+    const result = await callTool("anilist_list", {
+      username: "testuser",
+      type: "ANIME",
+      status: "CUSTOM",
+      sort: "SCORE",
+      limit: 10,
+    });
+
+    expect(result).toContain("no entries");
+  });
+
+  it("shows empty message when no custom lists exist", async () => {
+    mswServer.use(
+      listGroupsHandler([
+        {
+          name: "Completed",
+          status: "COMPLETED",
+          isCustomList: false,
+          entries: [makeEntry({ id: 1 })],
+        },
+      ]),
+    );
+
+    const result = await callTool("anilist_list", {
+      username: "testuser",
+      type: "ANIME",
+      status: "CUSTOM",
+      sort: "SCORE",
+      limit: 10,
+    });
+
+    expect(result).toContain("no custom");
   });
 });

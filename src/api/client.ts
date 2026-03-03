@@ -124,13 +124,13 @@ class AniListClient {
     return this.executeWithRetry<T>(query, variables);
   }
 
-  /** Fetch a user's media list, flattened into a single array */
-  async fetchList(
+  /** Fetch a user's media list groups with metadata (name, status, isCustomList) */
+  async fetchListGroups(
     username: string,
     type: string,
     status?: string,
     sort?: string[],
-  ): Promise<AniListMediaListEntry[]> {
+  ): Promise<UserListResponse["MediaListCollection"]["lists"]> {
     const variables: Record<string, unknown> = { userName: username, type };
     if (status) variables.status = status;
     if (sort) variables.sort = sort;
@@ -141,9 +141,21 @@ class AniListClient {
       { cache: "list" },
     );
 
+    return data.MediaListCollection.lists;
+  }
+
+  /** Fetch a user's media list, flattened into a single array */
+  async fetchList(
+    username: string,
+    type: string,
+    status?: string,
+    sort?: string[],
+  ): Promise<AniListMediaListEntry[]> {
+    const lists = await this.fetchListGroups(username, type, status, sort);
+
     // Flatten across status groups
     const entries: AniListMediaListEntry[] = [];
-    for (const list of data.MediaListCollection.lists) {
+    for (const list of lists) {
       entries.push(...list.entries);
     }
     return entries;

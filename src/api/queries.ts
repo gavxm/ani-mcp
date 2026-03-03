@@ -433,6 +433,7 @@ export const USER_LIST_QUERY = `
       lists {
         name
         status
+        isCustomList
         entries {
           id
           score(format: POINT_10)  # normalize to 1-10 scale regardless of user's profile setting
@@ -504,6 +505,147 @@ export const GENRE_TAG_COLLECTION_QUERY = `
       description
       category
       isAdult
+    }
+  }
+`;
+
+// === 0.4.0 Social & Favourites ===
+
+/** Toggle favourite on any entity type */
+export const TOGGLE_FAVOURITE_MUTATION = `
+  mutation ToggleFavourite(
+    $animeId: Int
+    $mangaId: Int
+    $characterId: Int
+    $staffId: Int
+    $studioId: Int
+  ) {
+    ToggleFavourite(
+      animeId: $animeId
+      mangaId: $mangaId
+      characterId: $characterId
+      staffId: $staffId
+      studioId: $studioId
+    ) {
+      anime { nodes { id } }
+      manga { nodes { id } }
+      characters { nodes { id } }
+      staff { nodes { id } }
+      studios { nodes { id } }
+    }
+  }
+`;
+
+/** Post a text activity to the authenticated user's feed */
+export const SAVE_TEXT_ACTIVITY_MUTATION = `
+  mutation SaveTextActivity($text: String!) {
+    SaveTextActivity(text: $text) {
+      id
+      createdAt
+      text
+      user { name }
+    }
+  }
+`;
+
+/** Recent activity for a user, supports text and list activity types */
+export const ACTIVITY_FEED_QUERY = `
+  query ActivityFeed($userId: Int, $type: ActivityType, $page: Int, $perPage: Int) {
+    Page(page: $page, perPage: $perPage) {
+      pageInfo { total currentPage hasNextPage }
+      activities(userId: $userId, type: $type, sort: ID_DESC) {
+        ... on TextActivity {
+          __typename
+          id
+          text
+          createdAt
+          user { name }
+        }
+        ... on ListActivity {
+          __typename
+          id
+          status
+          progress
+          createdAt
+          user { name }
+          media {
+            id
+            title { romaji english native }
+            type
+          }
+        }
+      }
+    }
+  }
+`;
+
+/** User profile with bio, stats summary, and top favourites */
+export const USER_PROFILE_QUERY = `
+  query UserProfile($name: String) {
+    User(name: $name) {
+      id
+      name
+      about
+      avatar { large }
+      bannerImage
+      siteUrl
+      createdAt
+      updatedAt
+      donatorTier
+      statistics {
+        anime {
+          count
+          meanScore
+          episodesWatched
+          minutesWatched
+        }
+        manga {
+          count
+          meanScore
+          chaptersRead
+          volumesRead
+        }
+      }
+      favourites {
+        anime(perPage: 5) {
+          nodes { id title { romaji english native } siteUrl }
+        }
+        manga(perPage: 5) {
+          nodes { id title { romaji english native } siteUrl }
+        }
+        characters(perPage: 5) {
+          nodes { id name { full } siteUrl }
+        }
+        staff(perPage: 5) {
+          nodes { id name { full } siteUrl }
+        }
+        studios(perPage: 5) {
+          nodes { id name siteUrl }
+        }
+      }
+    }
+  }
+`;
+
+/** Community reviews for a media title */
+export const MEDIA_REVIEWS_QUERY = `
+  query MediaReviews($id: Int, $search: String, $page: Int, $perPage: Int, $sort: [ReviewSort]) {
+    Media(id: $id, search: $search) {
+      id
+      title { romaji english native }
+      reviews(page: $page, perPage: $perPage, sort: $sort) {
+        pageInfo { total hasNextPage }
+        nodes {
+          id
+          score
+          summary
+          body
+          rating
+          ratingAmount
+          createdAt
+          user { name siteUrl }
+        }
+      }
     }
   }
 `;

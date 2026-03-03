@@ -104,9 +104,15 @@ export const ListInputSchema = z.object({
     .default("ANIME")
     .describe("Get anime or manga list"),
   status: z
-    .enum(["CURRENT", "COMPLETED", "PLANNING", "DROPPED", "PAUSED", "ALL"])
+    .enum(["CURRENT", "COMPLETED", "PLANNING", "DROPPED", "PAUSED", "ALL", "CUSTOM"])
     .default("ALL")
-    .describe("Filter by list status. CURRENT = watching/reading now."),
+    .describe(
+      "Filter by list status. CURRENT = watching/reading now. CUSTOM = user-created lists.",
+    ),
+  customListName: z
+    .string()
+    .optional()
+    .describe("Filter to a specific custom list by name. Only used when status is CUSTOM."),
   sort: z
     .enum(["SCORE", "TITLE", "UPDATED", "PROGRESS"])
     .default("UPDATED")
@@ -557,3 +563,96 @@ export const StudioSearchInputSchema = z.object({
 });
 
 export type StudioSearchInput = z.infer<typeof StudioSearchInputSchema>;
+
+// === 0.4.0 Social & Favourites ===
+
+/** Input for toggling a favourite */
+export const FavouriteInputSchema = z.object({
+  type: z
+    .enum(["ANIME", "MANGA", "CHARACTER", "STAFF", "STUDIO"])
+    .describe("Type of entity to favourite"),
+  id: z
+    .number()
+    .int()
+    .positive()
+    .describe("AniList ID of the entity to toggle favourite on"),
+});
+
+export type FavouriteInput = z.infer<typeof FavouriteInputSchema>;
+
+/** Input for posting a text activity */
+export const PostActivityInputSchema = z.object({
+  text: z
+    .string()
+    .min(1)
+    .max(2000)
+    .describe("Text content of the activity post"),
+});
+
+export type PostActivityInput = z.infer<typeof PostActivityInputSchema>;
+
+/** Input for fetching a user's activity feed */
+export const FeedInputSchema = z.object({
+  username: usernameSchema
+    .optional()
+    .describe(
+      "AniList username. Falls back to configured default if not provided.",
+    ),
+  type: z
+    .enum(["TEXT", "ANIME_LIST", "MANGA_LIST", "ALL"])
+    .default("ALL")
+    .describe("Filter by activity type"),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(25)
+    .default(10)
+    .describe("Number of activities to return (default 10, max 25)"),
+  page: pageParam,
+});
+
+export type FeedInput = z.infer<typeof FeedInputSchema>;
+
+/** Input for viewing a user's profile */
+export const ProfileInputSchema = z.object({
+  username: usernameSchema
+    .optional()
+    .describe(
+      "AniList username. Falls back to configured default if not provided.",
+    ),
+});
+
+export type ProfileInput = z.infer<typeof ProfileInputSchema>;
+
+/** Input for fetching community reviews for a title */
+export const ReviewsInputSchema = z
+  .object({
+    id: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe("AniList media ID"),
+    title: z
+      .string()
+      .optional()
+      .describe("Search by title if no ID is known"),
+    sort: z
+      .enum(["HELPFUL", "NEWEST"])
+      .default("HELPFUL")
+      .describe("Sort by most helpful or newest"),
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .max(10)
+      .default(5)
+      .describe("Number of reviews to return (default 5, max 10)"),
+    page: pageParam,
+  })
+  .refine((data) => data.id !== undefined || data.title !== undefined, {
+    message: "Provide either an id or a title.",
+  });
+
+export type ReviewsInput = z.infer<typeof ReviewsInputSchema>;
