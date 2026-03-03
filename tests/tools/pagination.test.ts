@@ -14,12 +14,19 @@ import {
 let callTool: Awaited<ReturnType<typeof createTestClient>>["callTool"];
 let cleanup: Awaited<ReturnType<typeof createTestClient>>["cleanup"];
 
+// Skip the parallel UserStats call in detectScoreFormat
+const savedScoreFormat = process.env.ANILIST_SCORE_FORMAT;
 beforeAll(async () => {
+  process.env.ANILIST_SCORE_FORMAT = "POINT_10";
   const client = await createTestClient();
   callTool = client.callTool;
   cleanup = client.cleanup;
 });
-afterAll(async () => cleanup());
+afterAll(async () => {
+  if (savedScoreFormat === undefined) delete process.env.ANILIST_SCORE_FORMAT;
+  else process.env.ANILIST_SCORE_FORMAT = savedScoreFormat;
+  await cleanup();
+});
 
 describe("pagination footer", () => {
   it("shows 'Use page: 2' when hasNextPage is true", async () => {

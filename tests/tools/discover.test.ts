@@ -1,9 +1,9 @@
-/** Integration tests for discover tools (trending, genre browse) */
+/** Integration tests for discover tools (trending, genre browse, genre list) */
 
-import { describe, it, expect, afterAll, beforeAll } from "vitest";
+import { describe, it, expect, afterAll, afterEach, beforeAll } from "vitest";
 import { createTestClient } from "../helpers/server.js";
 import { mswServer } from "../helpers/msw.js";
-import { trendingHandler, genreBrowseHandler } from "../helpers/handlers.js";
+import { trendingHandler, genreBrowseHandler, genreTagHandler } from "../helpers/handlers.js";
 
 let callTool: Awaited<ReturnType<typeof createTestClient>>["callTool"];
 let cleanup: Awaited<ReturnType<typeof createTestClient>>["cleanup"];
@@ -88,5 +88,54 @@ describe("anilist_genres", () => {
     });
 
     expect(result).toContain('No anime found in genre "Horror"');
+  });
+});
+
+describe("anilist_genre_list", () => {
+  const savedNsfw = process.env.ANILIST_NSFW;
+
+  afterEach(() => {
+    if (savedNsfw === undefined) delete process.env.ANILIST_NSFW;
+    else process.env.ANILIST_NSFW = savedNsfw;
+  });
+
+  it("returns genres and tags", async () => {
+    const result = await callTool("anilist_genre_list", {});
+
+    expect(result).toContain("AniList Genres");
+    expect(result).toContain("Action");
+    expect(result).toContain("Romance");
+    expect(result).toContain("Content Tags");
+    expect(result).toContain("Mecha");
+    expect(result).toContain("Isekai");
+  });
+
+  it("filters adult tags by default", async () => {
+    const result = await callTool("anilist_genre_list", {});
+
+    expect(result).not.toContain("AdultTag");
+  });
+
+  it("includes adult tags when requested", async () => {
+    const result = await callTool("anilist_genre_list", {
+      includeAdultTags: true,
+    });
+
+    expect(result).toContain("AdultTag");
+  });
+
+  it("groups tags by category", async () => {
+    const result = await callTool("anilist_genre_list", {});
+
+    expect(result).toContain("## Theme");
+  });
+
+  it("handles empty collection", async () => {
+    mswServer.use(genreTagHandler([], []));
+
+    const result = await callTool("anilist_genre_list", {});
+
+    expect(result).toContain("AniList Genres");
+    expect(result).toContain("Content Tags");
   });
 });

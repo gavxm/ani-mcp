@@ -2,10 +2,26 @@
 
 import type { FastMCP } from "fastmcp";
 import { anilistClient } from "../api/client.js";
-import { TRENDING_MEDIA_QUERY, GENRE_BROWSE_QUERY } from "../api/queries.js";
-import { TrendingInputSchema, GenreBrowseInputSchema } from "../schemas.js";
-import type { TrendingMediaResponse, SearchMediaResponse } from "../types.js";
-import { formatMediaSummary, throwToolError, paginationFooter } from "../utils.js";
+import {
+  TRENDING_MEDIA_QUERY,
+  GENRE_BROWSE_QUERY,
+  GENRE_TAG_COLLECTION_QUERY,
+} from "../api/queries.js";
+import {
+  TrendingInputSchema,
+  GenreBrowseInputSchema,
+  GenreListInputSchema,
+} from "../schemas.js";
+import type {
+  TrendingMediaResponse,
+  SearchMediaResponse,
+  GenreTagCollectionResponse,
+} from "../types.js";
+import {
+  formatMediaSummary,
+  throwToolError,
+  paginationFooter,
+} from "../utils.js";
 
 /** Register discovery tools on the MCP server */
 export function registerDiscoverTools(server: FastMCP): void {
@@ -54,8 +70,15 @@ export function registerDiscoverTools(server: FastMCP): void {
           (m, i) => `${offset + i + 1}. ${formatMediaSummary(m)}`,
         );
 
-        const footer = paginationFooter(args.page, args.limit, pageInfo.total, pageInfo.hasNextPage);
-        return header + formatted.join("\n\n") + (footer ? `\n\n${footer}` : "");
+        const footer = paginationFooter(
+          args.page,
+          args.limit,
+          pageInfo.total,
+          pageInfo.hasNextPage,
+        );
+        return (
+          header + formatted.join("\n\n") + (footer ? `\n\n${footer}` : "")
+        );
       } catch (error) {
         return throwToolError(error, "fetching trending");
       }
@@ -129,10 +152,81 @@ export function registerDiscoverTools(server: FastMCP): void {
           (m, i) => `${offset + i + 1}. ${formatMediaSummary(m)}`,
         );
 
-        const footer = paginationFooter(args.page, args.limit, pageInfo.total, pageInfo.hasNextPage);
-        return header + formatted.join("\n\n") + (footer ? `\n\n${footer}` : "");
+        const footer = paginationFooter(
+          args.page,
+          args.limit,
+          pageInfo.total,
+          pageInfo.hasNextPage,
+        );
+        return (
+          header + formatted.join("\n\n") + (footer ? `\n\n${footer}` : "")
+        );
       } catch (error) {
         return throwToolError(error, "browsing genres");
+      }
+    },
+  });
+
+  // === Genre/Tag List ===
+
+  server.addTool({
+    name: "anilist_genre_list",
+    description:
+      "List all valid AniList genres and content tags. " +
+      "Use when the user asks what genres exist, wants to see available tags, " +
+      "or needs valid genre names for filtering other tools.",
+    parameters: GenreListInputSchema,
+    annotations: {
+      title: "List Genres & Tags",
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
+    execute: async (args) => {
+      try {
+        const data = await anilistClient.query<GenreTagCollectionResponse>(
+          GENRE_TAG_COLLECTION_QUERY,
+          {},
+          { cache: "media" },
+        );
+
+        const lines: string[] = [
+          "# AniList Genres",
+          "",
+          data.GenreCollection.join(", "),
+        ];
+
+        // Group tags by category
+        let tags = data.MediaTagCollection;
+        if (!args.includeAdultTags) {
+          tags = tags.filter((t) => !t.isAdult);
+        }
+
+        const categories = new Map<
+          string,
+          Array<{ name: string; description: string }>
+        >();
+        for (const tag of tags) {
+          const cat = tag.category || "Other";
+          const list = categories.get(cat);
+          if (list) {
+            list.push(tag);
+          } else {
+            categories.set(cat, [tag]);
+          }
+        }
+
+        lines.push("", "# Content Tags");
+        for (const [category, catTags] of categories) {
+          lines.push("", `## ${category}`);
+          for (const tag of catTags) {
+            lines.push(`  ${tag.name} - ${tag.description}`);
+          }
+        }
+
+        return lines.join("\n");
+      } catch (error) {
+        return throwToolError(error, "fetching genre list");
       }
     },
   });

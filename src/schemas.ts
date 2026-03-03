@@ -531,6 +531,16 @@ export const StaffSearchInputSchema = z.object({
 
 export type StaffSearchInput = z.infer<typeof StaffSearchInputSchema>;
 
+/** Input for listing all valid genres and tags */
+export const GenreListInputSchema = z.object({
+  includeAdultTags: z
+    .boolean()
+    .default(false)
+    .describe("Include adult/NSFW tags in the list"),
+});
+
+export type GenreListInput = z.infer<typeof GenreListInputSchema>;
+
 /** Input for searching studios by name */
 export const StudioSearchInputSchema = z.object({
   query: z

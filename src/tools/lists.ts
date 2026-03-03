@@ -8,8 +8,15 @@ import type {
   AniListMediaListEntry,
   UserStatsResponse,
   MediaTypeStats,
+  ScoreFormat,
 } from "../types.js";
-import { getTitle, getDefaultUsername, throwToolError, paginationFooter } from "../utils.js";
+import {
+  getTitle,
+  getDefaultUsername,
+  throwToolError,
+  paginationFooter,
+  formatScore,
+} from "../utils.js";
 
 // Map user-friendly sort names to AniList's internal enum values
 const SORT_MAP: Record<string, string[]> = {
@@ -39,14 +46,13 @@ export function registerListTools(server: FastMCP): void {
       try {
         const username = getDefaultUsername(args.username);
 
+        // Fetch list and score format in parallel
         const sort = SORT_MAP[args.sort] ?? SORT_MAP.UPDATED;
         const status = args.status !== "ALL" ? args.status : undefined;
-        const allEntries = await anilistClient.fetchList(
-          username,
-          args.type,
-          status,
-          sort,
-        );
+        const [allEntries, scoreFormat] = await Promise.all([
+          anilistClient.fetchList(username, args.type, status, sort),
+          detectScoreFormat(username),
+        ]);
 
         if (!allEntries.length) {
           if (args.status === "ALL") {
@@ -72,11 +78,18 @@ export function registerListTools(server: FastMCP): void {
         ].join("\n");
 
         const formatted = limited.map((entry, i) =>
-          formatListEntry(entry, offset + i + 1),
+          formatListEntry(entry, offset + i + 1, scoreFormat),
         );
 
-        const footer = paginationFooter(args.page, args.limit, totalCount, hasNextPage);
-        return header + formatted.join("\n\n") + (footer ? `\n\n${footer}` : "");
+        const footer = paginationFooter(
+          args.page,
+          args.limit,
+          totalCount,
+          hasNextPage,
+        );
+        return (
+          header + formatted.join("\n\n") + (footer ? `\n\n${footer}` : "")
+        );
       } catch (error) {
         return throwToolError(error, "fetching list");
       }
@@ -135,6 +148,22 @@ export function registerListTools(server: FastMCP): void {
   });
 }
 
+/** Detect user's score format from env override or AniList profile */
+async function detectScoreFormat(username: string): Promise<ScoreFormat> {
+  const override = process.env.ANILIST_SCORE_FORMAT;
+  if (override) return override as ScoreFormat;
+  try {
+    const data = await anilistClient.query<UserStatsResponse>(
+      USER_STATS_QUERY,
+      { name: username },
+      { cache: "stats" },
+    );
+    return data.User.mediaListOptions.scoreFormat;
+  } catch {
+    return "POINT_10";
+  }
+}
+
 /** Format statistics for a single media type (anime or manga) */
 function formatTypeStats(stats: MediaTypeStats, label: string): string[] {
   const lines: string[] = [`## ${label}`];
@@ -191,7 +220,11 @@ function formatTypeStats(stats: MediaTypeStats, label: string): string[] {
 }
 
 /** Format a single list entry with title, progress, score, and update date */
-function formatListEntry(entry: AniListMediaListEntry, index: number): string {
+function formatListEntry(
+  entry: AniListMediaListEntry,
+  index: number,
+  scoreFmt: ScoreFormat,
+): string {
   const media = entry.media;
   const title = getTitle(media.title);
   const format = media.format ?? "?";
@@ -201,7 +234,7 @@ function formatListEntry(entry: AniListMediaListEntry, index: number): string {
   const unit = media.episodes !== null ? "ep" : "ch";
   const progress = `${entry.progress}/${total} ${unit}`;
 
-  const score = entry.score > 0 ? `★ ${entry.score}/10` : "Unscored";
+  const score = formatScore(entry.score, scoreFmt);
 
   const updated = entry.updatedAt
     ? new Date(entry.updatedAt * 1000).toLocaleDateString("en-US", {
