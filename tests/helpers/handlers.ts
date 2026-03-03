@@ -54,12 +54,38 @@ export const defaultHandlers = [
       variables?: Record<string, unknown>;
     };
 
+    // Viewer (whoami)
+    if (matchQuery(body, "Viewer")) {
+      return gql({
+        Viewer: {
+          id: 1,
+          name: "testuser",
+          avatar: { medium: null },
+          siteUrl: "https://anilist.co/user/testuser",
+          mediaListOptions: { scoreFormat: "POINT_10" },
+        },
+      });
+    }
+
+    // Genre/tag collection
+    if (matchQuery(body, "GenreTagCollection")) {
+      return gql({
+        GenreCollection: ["Action", "Adventure", "Comedy", "Drama", "Fantasy", "Romance", "Sci-Fi"],
+        MediaTagCollection: [
+          { name: "Mecha", description: "Giant robots", category: "Theme", isAdult: false },
+          { name: "Isekai", description: "Transported to another world", category: "Theme", isAdult: false },
+          { name: "AdultTag", description: "Adult content", category: "Theme", isAdult: true },
+        ],
+      });
+    }
+
     // User stats
     if (matchQuery(body, "UserStats")) {
       return gql({
         User: {
           id: 1,
           name: body.variables?.name ?? "testuser",
+          mediaListOptions: { scoreFormat: "POINT_10" },
           statistics: {
             anime: {
               count: 50,
@@ -700,5 +726,26 @@ export function studioSearchHandler(studio: Record<string, unknown>) {
     const body = (await request.json()) as { query?: string };
     if (!matchQuery(body, "StudioSearch")) return undefined;
     return gql({ Studio: studio });
+  });
+}
+
+/** Override viewer to return specific data */
+export function viewerHandler(viewer: Record<string, unknown>) {
+  return http.post(ANILIST_URL, async ({ request }) => {
+    const body = (await request.json()) as { query?: string };
+    if (!matchQuery(body, "Viewer")) return undefined;
+    return gql({ Viewer: viewer });
+  });
+}
+
+/** Override genre/tag collection */
+export function genreTagHandler(
+  genres: string[],
+  tags: Array<Record<string, unknown>>,
+) {
+  return http.post(ANILIST_URL, async ({ request }) => {
+    const body = (await request.json()) as { query?: string };
+    if (!matchQuery(body, "GenreTagCollection")) return undefined;
+    return gql({ GenreCollection: genres, MediaTagCollection: tags });
   });
 }

@@ -81,6 +81,23 @@ describe("anilistClient.query", () => {
   );
 
   it(
+    "throws non-retryable AniListApiError on 401 with auth message",
+    async () => {
+      mswServer.use(errorHandler(401, "Unauthorized"));
+      try {
+        await anilistClient.query(DUMMY_QUERY, {}, { cache: null });
+        expect.unreachable("Should have thrown");
+      } catch (e) {
+        expect(e).toBeInstanceOf(AniListApiError);
+        expect((e as AniListApiError).status).toBe(401);
+        expect((e as AniListApiError).retryable).toBe(false);
+        expect((e as AniListApiError).message).toContain("Authentication failed");
+      }
+    },
+    RETRY_TIMEOUT,
+  );
+
+  it(
     "throws non-retryable AniListApiError on 403",
     async () => {
       mswServer.use(errorHandler(403, "Forbidden"));
@@ -91,6 +108,21 @@ describe("anilistClient.query", () => {
         expect(e).toBeInstanceOf(AniListApiError);
         expect((e as AniListApiError).status).toBe(403);
         expect((e as AniListApiError).retryable).toBe(false);
+      }
+    },
+    RETRY_TIMEOUT,
+  );
+
+  it(
+    "includes retry timing in 429 error message",
+    async () => {
+      mswServer.use(errorHandler(429, "Rate limited"));
+      try {
+        await anilistClient.query(DUMMY_QUERY, {}, { cache: null });
+        expect.unreachable("Should have thrown");
+      } catch (e) {
+        expect(e).toBeInstanceOf(AniListApiError);
+        expect((e as AniListApiError).message).toContain("rate limit exceeded");
       }
     },
     RETRY_TIMEOUT,

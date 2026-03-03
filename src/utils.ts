@@ -1,11 +1,63 @@
 /** Formatting and resolution helpers. */
 
 import { UserError } from "fastmcp";
-import type { AniListMedia } from "./types.js";
+import type { AniListMedia, ScoreFormat } from "./types.js";
 
-/** Best available title: English -> Romaji -> Native */
+/** Best available title, respecting ANILIST_TITLE_LANGUAGE preference */
 export function getTitle(title: AniListMedia["title"]): string {
+  const pref = process.env.ANILIST_TITLE_LANGUAGE?.toLowerCase();
+  if (pref === "romaji")
+    return title.romaji || title.english || title.native || "Unknown Title";
+  if (pref === "native")
+    return title.native || title.romaji || title.english || "Unknown Title";
+  // Default: english first
   return title.english || title.romaji || title.native || "Unknown Title";
+}
+
+/** Whether NSFW/adult content is enabled via env var (default: false) */
+export function isNsfwEnabled(): boolean {
+  const val = process.env.ANILIST_NSFW?.toLowerCase();
+  return val === "true" || val === "1";
+}
+
+// Common abbreviations to full AniList titles
+const ALIAS_MAP: Record<string, string> = {
+  aot: "Attack on Titan",
+  snk: "Shingeki no Kyojin",
+  jjk: "Jujutsu Kaisen",
+  csm: "Chainsaw Man",
+  mha: "My Hero Academia",
+  bnha: "Boku no Hero Academia",
+  hxh: "Hunter x Hunter",
+  fmab: "Fullmetal Alchemist Brotherhood",
+  fma: "Fullmetal Alchemist",
+  opm: "One Punch Man",
+  sao: "Sword Art Online",
+  re0: "Re:Zero",
+  rezero: "Re:Zero",
+  konosuba: "Kono Subarashii Sekai ni Shukufuku wo!",
+  danmachi: "Is It Wrong to Try to Pick Up Girls in a Dungeon?",
+  oregairu: "My Teen Romantic Comedy SNAFU",
+  toradora: "Toradora!",
+  nge: "Neon Genesis Evangelion",
+  eva: "Neon Genesis Evangelion",
+  ttgl: "Tengen Toppa Gurren Lagann",
+  klk: "Kill la Kill",
+  jojo: "JoJo's Bizarre Adventure",
+  dbz: "Dragon Ball Z",
+  dbs: "Dragon Ball Super",
+  op: "One Piece",
+  bc: "Black Clover",
+  ds: "Demon Slayer",
+  kny: "Demon Slayer",
+  aob: "Blue Exorcist",
+  mob: "Mob Psycho 100",
+  yyh: "Yu Yu Hakusho",
+};
+
+/** Resolve common abbreviations to full titles */
+export function resolveAlias(query: string): string {
+  return ALIAS_MAP[query.toLowerCase()] ?? query;
 }
 
 /** Truncate to max length, breaking at word boundary. Strips residual HTML. */
@@ -90,4 +142,28 @@ export function formatMediaSummary(media: AniListMedia): string {
   lines.push(`  URL: ${media.siteUrl}`);
 
   return lines.join("\n");
+}
+
+/** Display a normalized 0-10 score in the user's preferred format */
+export function formatScore(score10: number, format: ScoreFormat): string {
+  if (score10 <= 0) return "Unscored";
+  switch (format) {
+    case "POINT_100":
+      return `${Math.round(score10 * 10)}/100`;
+    case "POINT_10_DECIMAL":
+      return `${score10.toFixed(1)}/10`;
+    case "POINT_10":
+      return `${Math.round(score10)}/10`;
+    case "POINT_5": {
+      const stars = Math.round(score10 / 2);
+      return "★".repeat(stars) + "☆".repeat(5 - stars);
+    }
+    case "POINT_3": {
+      if (score10 >= 7) return "🙂";
+      if (score10 >= 4) return "😐";
+      return "🙁";
+    }
+    default:
+      return `${score10}/10`;
+  }
 }

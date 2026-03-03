@@ -205,8 +205,11 @@ class AniListClient {
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       log("network-error", msg);
+      const isTimeout = msg.includes("abort") || msg.includes("timeout");
       throw new AniListApiError(
-        `Network error connecting to AniList: ${msg}`,
+        isTimeout
+          ? "Could not reach AniList (request timed out). Try again."
+          : `Network error connecting to AniList: ${msg}`,
         undefined,
         true,
       );
@@ -218,25 +221,36 @@ class AniListClient {
       const body = await response.text().catch(() => "");
 
       if (response.status === 429) {
-        log("rate-limit", `429 from AniList`);
         const retryAfter = response.headers.get("Retry-After");
-        if (retryAfter) {
-          const delaySec = parseInt(retryAfter, 10);
-          if (delaySec > 0) {
-            await new Promise((r) => setTimeout(r, delaySec * 1000));
-          }
+        const delaySec = retryAfter ? parseInt(retryAfter, 10) : 0;
+        log(
+          "rate-limit",
+          `429 from AniList (retry-after: ${delaySec || "none"})`,
+        );
+        if (delaySec > 0) {
+          await new Promise((r) => setTimeout(r, delaySec * 1000));
         }
         throw new AniListApiError(
-          "AniList rate limit hit. The server will retry automatically.",
+          `AniList rate limit exceeded. Try again in ${delaySec > 0 ? `${delaySec} seconds` : "30-60 seconds"}.`,
           429,
           true,
+        );
+      }
+
+      if (response.status === 401) {
+        throw new AbortError(
+          new AniListApiError(
+            "Authentication failed. Check that ANILIST_TOKEN is valid and not expired.",
+            401,
+            false,
+          ),
         );
       }
 
       if (response.status === 404) {
         throw new AbortError(
           new AniListApiError(
-            "Resource not found on AniList. Check that the ID or username is correct.",
+            "Not found on AniList. Check that the ID or username is correct.",
             404,
             false,
           ),

@@ -1,6 +1,7 @@
-/** Info tools: staff credits, airing schedule, and character search. */
+/** Info tools: staff credits, airing schedule, character search, and auth check. */
 
 import type { FastMCP } from "fastmcp";
+import { z } from "zod";
 import { anilistClient } from "../api/client.js";
 import {
   STAFF_QUERY,
@@ -8,6 +9,7 @@ import {
   CHARACTER_SEARCH_QUERY,
   STAFF_SEARCH_QUERY,
   STUDIO_SEARCH_QUERY,
+  VIEWER_QUERY,
 } from "../api/queries.js";
 import {
   StaffInputSchema,
@@ -22,6 +24,7 @@ import type {
   CharacterSearchResponse,
   StaffSearchResponse,
   StudioSearchResponse,
+  ViewerResponse,
 } from "../types.js";
 import { getTitle, throwToolError, paginationFooter } from "../utils.js";
 
@@ -41,6 +44,76 @@ function formatTimeUntil(seconds: number): string {
 
 /** Register info tools on the MCP server */
 export function registerInfoTools(server: FastMCP): void {
+  // === Who Am I ===
+
+  server.addTool({
+    name: "anilist_whoami",
+    description:
+      "Check which AniList account is authenticated and verify the token works. " +
+      "Use when the user wants to confirm their setup or debug auth issues.",
+    parameters: z.object({}),
+    annotations: {
+      title: "Who Am I",
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
+    execute: async () => {
+      if (!process.env.ANILIST_TOKEN) {
+        const lines = [
+          "ANILIST_TOKEN is not set.",
+          "Set it to enable authenticated features (write operations, score format detection).",
+          "Get a token at: https://anilist.co/settings/developer",
+        ];
+        const envUser = process.env.ANILIST_USERNAME;
+        if (envUser) {
+          lines.push(
+            "",
+            `ANILIST_USERNAME is set to "${envUser}" (read-only mode).`,
+          );
+        }
+        return lines.join("\n");
+      }
+
+      try {
+        const data = await anilistClient.query<ViewerResponse>(
+          VIEWER_QUERY,
+          {},
+          { cache: "stats" },
+        );
+
+        const v = data.Viewer;
+        const lines = [
+          `Authenticated as: ${v.name}`,
+          `AniList ID: ${v.id}`,
+          `Score format: ${v.mediaListOptions.scoreFormat}`,
+          `Profile: ${v.siteUrl}`,
+        ];
+
+        // Check if Anilist username matches
+        const envUser = process.env.ANILIST_USERNAME;
+        if (envUser) {
+          const match = envUser.toLowerCase() === v.name.toLowerCase();
+          lines.push(
+            "",
+            match
+              ? `ANILIST_USERNAME "${envUser}" matches authenticated user.`
+              : `ANILIST_USERNAME "${envUser}" does not match authenticated user "${v.name}".`,
+          );
+        } else {
+          lines.push(
+            "",
+            "ANILIST_USERNAME is not set. Tools will require a username argument.",
+          );
+        }
+
+        return lines.join("\n");
+      } catch (error) {
+        return throwToolError(error, "checking authentication");
+      }
+    },
+  });
+
   // === Staff Credits ===
 
   server.addTool({
@@ -250,7 +323,12 @@ export function registerInfoTools(server: FastMCP): void {
           lines.push("");
         }
 
-        const footer = paginationFooter(args.page, args.limit, pageInfo.total, pageInfo.hasNextPage);
+        const footer = paginationFooter(
+          args.page,
+          args.limit,
+          pageInfo.total,
+          pageInfo.hasNextPage,
+        );
         return lines.join("\n") + (footer ? `\n${footer}` : "");
       } catch (error) {
         return throwToolError(error, "searching characters");
@@ -277,7 +355,12 @@ export function registerInfoTools(server: FastMCP): void {
       try {
         const data = await anilistClient.query<StaffSearchResponse>(
           STAFF_SEARCH_QUERY,
-          { search: args.query, page: args.page, perPage: args.limit, mediaPerPage: args.mediaLimit },
+          {
+            search: args.query,
+            page: args.page,
+            perPage: args.limit,
+            mediaPerPage: args.mediaLimit,
+          },
           { cache: "search" },
         );
 
@@ -302,7 +385,13 @@ export function registerInfoTools(server: FastMCP): void {
           // Dedupe media by ID and group roles
           const mediaMap = new Map<
             number,
-            { title: string; format: string | null; score: number | null; url: string; roles: string[] }
+            {
+              title: string;
+              format: string | null;
+              score: number | null;
+              url: string;
+              roles: string[];
+            }
           >();
           for (const edge of person.staffMedia.edges) {
             const existing = mediaMap.get(edge.node.id);
@@ -335,7 +424,12 @@ export function registerInfoTools(server: FastMCP): void {
           lines.push(`  URL: ${person.siteUrl}`, "");
         }
 
-        const footer = paginationFooter(args.page, args.limit, data.Page.pageInfo.total, data.Page.pageInfo.hasNextPage);
+        const footer = paginationFooter(
+          args.page,
+          args.limit,
+          data.Page.pageInfo.total,
+          data.Page.pageInfo.hasNextPage,
+        );
         return lines.join("\n") + (footer ? `\n${footer}` : "");
       } catch (error) {
         return throwToolError(error, "searching staff");
@@ -369,10 +463,7 @@ export function registerInfoTools(server: FastMCP): void {
         const studio = data.Studio;
         const tag = studio.isAnimationStudio ? "Animation Studio" : "Studio";
 
-        const lines: string[] = [
-          `# ${studio.name} (${tag})`,
-          "",
-        ];
+        const lines: string[] = [`# ${studio.name} (${tag})`, ""];
 
         // Main productions first, then supporting
         const main = studio.media.edges.filter((e) => e.isMainStudio);

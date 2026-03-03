@@ -7,6 +7,9 @@ import {
   getDefaultUsername,
   throwToolError,
   formatMediaSummary,
+  isNsfwEnabled,
+  resolveAlias,
+  formatScore,
 } from "../src/utils.js";
 import { makeMedia } from "./fixtures.js";
 
@@ -188,5 +191,116 @@ describe("formatMediaSummary", () => {
       startDate: { year: null, month: null, day: null },
     };
     expect(formatMediaSummary(media)).toContain("?");
+  });
+});
+
+describe("getTitle - language preference", () => {
+  afterEach(() => {
+    delete process.env.ANILIST_TITLE_LANGUAGE;
+  });
+
+  const title = { english: "Attack on Titan", romaji: "Shingeki no Kyojin", native: "進撃の巨人" };
+
+  it("defaults to English", () => {
+    expect(getTitle(title)).toBe("Attack on Titan");
+  });
+
+  it("respects romaji preference", () => {
+    process.env.ANILIST_TITLE_LANGUAGE = "romaji";
+    expect(getTitle(title)).toBe("Shingeki no Kyojin");
+  });
+
+  it("respects native preference", () => {
+    process.env.ANILIST_TITLE_LANGUAGE = "native";
+    expect(getTitle(title)).toBe("進撃の巨人");
+  });
+
+  it("falls through when preferred is null", () => {
+    process.env.ANILIST_TITLE_LANGUAGE = "romaji";
+    expect(getTitle({ english: "Test", romaji: null, native: null })).toBe("Test");
+  });
+
+  it("is case insensitive", () => {
+    process.env.ANILIST_TITLE_LANGUAGE = "ROMAJI";
+    expect(getTitle(title)).toBe("Shingeki no Kyojin");
+  });
+});
+
+describe("isNsfwEnabled", () => {
+  afterEach(() => {
+    delete process.env.ANILIST_NSFW;
+  });
+
+  it("returns false by default", () => {
+    expect(isNsfwEnabled()).toBe(false);
+  });
+
+  it('returns true when set to "true"', () => {
+    process.env.ANILIST_NSFW = "true";
+    expect(isNsfwEnabled()).toBe(true);
+  });
+
+  it('returns true when set to "1"', () => {
+    process.env.ANILIST_NSFW = "1";
+    expect(isNsfwEnabled()).toBe(true);
+  });
+
+  it("returns false for other values", () => {
+    process.env.ANILIST_NSFW = "yes";
+    expect(isNsfwEnabled()).toBe(false);
+  });
+});
+
+describe("resolveAlias", () => {
+  it("resolves known abbreviation", () => {
+    expect(resolveAlias("aot")).toBe("Attack on Titan");
+  });
+
+  it("is case insensitive", () => {
+    expect(resolveAlias("JJK")).toBe("Jujutsu Kaisen");
+  });
+
+  it("returns original query for unknown alias", () => {
+    expect(resolveAlias("some random query")).toBe("some random query");
+  });
+
+  it("resolves multiple aliases to correct titles", () => {
+    expect(resolveAlias("csm")).toBe("Chainsaw Man");
+    expect(resolveAlias("hxh")).toBe("Hunter x Hunter");
+    expect(resolveAlias("mha")).toBe("My Hero Academia");
+  });
+});
+
+describe("formatScore", () => {
+  it("shows Unscored for zero", () => {
+    expect(formatScore(0, "POINT_10")).toBe("Unscored");
+  });
+
+  it("formats POINT_100", () => {
+    expect(formatScore(8.5, "POINT_100")).toBe("85/100");
+  });
+
+  it("formats POINT_10_DECIMAL", () => {
+    expect(formatScore(8.5, "POINT_10_DECIMAL")).toBe("8.5/10");
+  });
+
+  it("formats POINT_10", () => {
+    expect(formatScore(8.5, "POINT_10")).toBe("9/10");
+  });
+
+  it("formats POINT_5 as stars", () => {
+    expect(formatScore(8, "POINT_5")).toBe("★★★★☆");
+  });
+
+  it("formats POINT_3 high score", () => {
+    expect(formatScore(9, "POINT_3")).toBe("🙂");
+  });
+
+  it("formats POINT_3 mid score", () => {
+    expect(formatScore(5, "POINT_3")).toBe("😐");
+  });
+
+  it("formats POINT_3 low score", () => {
+    expect(formatScore(2, "POINT_3")).toBe("🙁");
   });
 });

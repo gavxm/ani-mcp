@@ -167,6 +167,9 @@ export const USER_STATS_QUERY = `
     User(name: $name) {
       id
       name
+      mediaListOptions {
+        scoreFormat
+      }
       statistics {
         anime {
           count
@@ -473,6 +476,34 @@ export const STAFF_SEARCH_QUERY = `
           }
         }
       }
+    }
+  }
+`;
+
+/** Authenticated user info */
+export const VIEWER_QUERY = `
+  query Viewer {
+    Viewer {
+      id
+      name
+      avatar { medium }
+      siteUrl
+      mediaListOptions {
+        scoreFormat
+      }
+    }
+  }
+`;
+
+/** All valid genres and media tags */
+export const GENRE_TAG_COLLECTION_QUERY = `
+  query GenreTagCollection {
+    GenreCollection
+    MediaTagCollection {
+      name
+      description
+      category
+      isAdult
     }
   }
 `;

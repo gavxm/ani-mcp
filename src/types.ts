@@ -99,6 +99,9 @@ export interface UserStatsResponse {
   User: {
     id: number;
     name: string;
+    mediaListOptions: {
+      scoreFormat: ScoreFormat;
+    };
     statistics: {
       anime: MediaTypeStats;
       manga: MediaTypeStats;
@@ -320,6 +323,38 @@ export interface StaffSearchResponse {
       };
     }>;
   };
+}
+
+/** AniList score format options */
+export type ScoreFormat =
+  | "POINT_100"
+  | "POINT_10_DECIMAL"
+  | "POINT_10"
+  | "POINT_5"
+  | "POINT_3";
+
+/** Authenticated user info from Viewer query */
+export interface ViewerResponse {
+  Viewer: {
+    id: number;
+    name: string;
+    avatar: { medium: string | null };
+    siteUrl: string;
+    mediaListOptions: {
+      scoreFormat: ScoreFormat;
+    };
+  };
+}
+
+/** All valid genres and media tags */
+export interface GenreTagCollectionResponse {
+  GenreCollection: string[];
+  MediaTagCollection: Array<{
+    name: string;
+    description: string;
+    category: string;
+    isAdult: boolean;
+  }>;
 }
 
 /** Single studio with production history */

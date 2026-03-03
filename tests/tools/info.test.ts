@@ -1,6 +1,6 @@
-/** Integration tests for info tools (staff, schedule, characters, staff search, studio search) */
+/** Integration tests for info tools (staff, schedule, characters, staff search, studio search, whoami) */
 
-import { describe, it, expect, afterAll, beforeAll } from "vitest";
+import { describe, it, expect, afterAll, afterEach, beforeAll } from "vitest";
 import { createTestClient } from "../helpers/server.js";
 import { mswServer } from "../helpers/msw.js";
 import {
@@ -9,6 +9,7 @@ import {
   characterHandler,
   staffSearchHandler,
   studioSearchHandler,
+  errorHandler,
 } from "../helpers/handlers.js";
 
 let callTool: Awaited<ReturnType<typeof createTestClient>>["callTool"];
@@ -252,5 +253,57 @@ describe("anilist_studio_search", () => {
     expect(result).toContain("85%");
     expect(result).toContain("FINISHED");
     expect(result).toContain("78%");
+  });
+});
+
+describe("anilist_whoami", () => {
+  const savedToken = process.env.ANILIST_TOKEN;
+  const savedUser = process.env.ANILIST_USERNAME;
+
+  afterEach(() => {
+    process.env.ANILIST_TOKEN = savedToken;
+    process.env.ANILIST_USERNAME = savedUser;
+  });
+
+  it("returns auth info when token is set", async () => {
+    process.env.ANILIST_TOKEN = "test-token";
+    const result = await callTool("anilist_whoami", {});
+
+    expect(result).toContain("Authenticated as: testuser");
+    expect(result).toContain("AniList ID: 1");
+    expect(result).toContain("Score format: POINT_10");
+    expect(result).toContain("Profile:");
+  });
+
+  it("reports no token when unset", async () => {
+    delete process.env.ANILIST_TOKEN;
+    const result = await callTool("anilist_whoami", {});
+
+    expect(result).toContain("ANILIST_TOKEN is not set");
+    expect(result).toContain("anilist.co/settings/developer");
+  });
+
+  it("shows username match status", async () => {
+    process.env.ANILIST_TOKEN = "test-token";
+    process.env.ANILIST_USERNAME = "testuser";
+    const result = await callTool("anilist_whoami", {});
+
+    expect(result).toContain("matches authenticated user");
+  });
+
+  it("warns on username mismatch", async () => {
+    process.env.ANILIST_TOKEN = "test-token";
+    process.env.ANILIST_USERNAME = "otheruser";
+    const result = await callTool("anilist_whoami", {});
+
+    expect(result).toContain("does not match");
+  });
+
+  it("handles auth error", async () => {
+    process.env.ANILIST_TOKEN = "bad-token";
+    mswServer.use(errorHandler(401, "Unauthorized"));
+
+    const result = await callTool("anilist_whoami", {});
+    expect(result.toLowerCase()).toContain("authentication");
   });
 });
