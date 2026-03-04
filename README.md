@@ -17,11 +17,14 @@ A smart [MCP](https://modelcontextprotocol.io) server for [AniList](https://anil
 Most AniList integrations mirror the API 1:1. ani-mcp adds an intelligence layer on top:
 
 - **Taste profiling** - builds a model of your preferences from your completed list
-- **Personalized picks** - "what should I watch next?" based on your taste and mood
+- **Personalized picks** - "what should I watch next?" based on your taste, mood, and seasonal lineup
 - **Compatibility** - compare taste between two users
+- **Sequel alerts** - find sequels airing this season for shows you've finished
+- **Watch order** - franchise chain traversal for long-running series
+- **Session planning** - "I have 90 minutes, what should I watch?" from your current list
 - **Year in review** - your watching/reading stats wrapped up
 
-Plus the essentials: search, details, trending, seasonal browsing, list management, and community recommendations. All search and browse tools support pagination for browsing beyond the first page of results.
+Plus the essentials: search, details, trending, seasonal browsing, list management, social features, and community recommendations. All search and browse tools support pagination for browsing beyond the first page of results.
 
 ## Install
 
@@ -52,6 +55,7 @@ Works with any MCP-compatible client.
 | `ANILIST_TITLE_LANGUAGE` | No | Title preference: `english` (default), `romaji`, or `native`. |
 | `ANILIST_SCORE_FORMAT` | No | Override score display: `POINT_100`, `POINT_10_DECIMAL`, `POINT_10`, `POINT_5`, `POINT_3`. |
 | `ANILIST_NSFW` | No | Set to `true` to include adult content in results. Default: `false`. |
+| `ANILIST_MOOD_CONFIG` | No | JSON object to add or override mood keywords. See [Mood config](#mood-config). |
 | `DEBUG` | No | Set to `true` for debug logging to stderr. |
 | `MCP_TRANSPORT` | No | Set to `http` for HTTP Stream transport. Default: stdio. |
 | `MCP_PORT` | No | Port for HTTP transport. Default: `3000`. |
@@ -83,11 +87,14 @@ Works with any MCP-compatible client.
 | Tool | Description |
 | --- | --- |
 | `anilist_taste` | Generate a taste profile from your completed list |
-| `anilist_pick` | Personalized "what to watch next" based on taste and mood |
+| `anilist_pick` | Personalized "what to watch next" from your backlog, seasonal lineup, or discovery pool |
 | `anilist_compare` | Compare taste compatibility between two users |
 | `anilist_wrapped` | Year-in-review summary |
 | `anilist_explain` | "Why would I like this?" - score a title against your taste profile |
 | `anilist_similar` | Find titles similar to a given anime or manga |
+| `anilist_sequels` | Sequels airing this season for titles you've completed |
+| `anilist_watch_order` | Viewing order for a franchise |
+| `anilist_session` | Plan a viewing session within a time budget |
 
 ### Info
 
@@ -99,6 +106,16 @@ Works with any MCP-compatible client.
 | `anilist_schedule` | Airing schedule and next episode countdown |
 | `anilist_characters` | Search characters by name with appearances and VAs |
 | `anilist_whoami` | Check authentication status and score format |
+
+### Social
+
+| Tool | Description |
+| --- | --- |
+| `anilist_profile` | View a user's profile, bio, favourites, and stats |
+| `anilist_feed` | Recent activity from a user's feed |
+| `anilist_reviews` | Community reviews for a title |
+| `anilist_favourite` | Toggle favourite on anime, manga, character, staff, or studio |
+| `anilist_activity` | Post a text activity to your feed |
 
 ### Write (requires `ANILIST_TOKEN`)
 
@@ -114,19 +131,45 @@ Works with any MCP-compatible client.
 Here are some things you can ask your AI assistant once ani-mcp is connected:
 
 **"What should I watch next?"**
-Uses `anilist_pick` to analyze your completed list, build a taste profile, and recommend titles from your Planning list (or discover new ones) ranked by how well they match your preferences.
+Uses `anilist_pick` to analyze your completed list, build a taste profile, and recommend titles from your Planning list ranked by how well they match your preferences.
+
+**"I want something dark and psychological"**
+Uses `anilist_pick` with mood filtering to boost titles matching that vibe and penalize mismatches.
+
+**"What's good this season?"**
+Uses `anilist_pick` with `source: SEASONAL` to rank currently airing anime against your taste profile.
+
+**"I have 90 minutes, what should I watch tonight?"**
+Uses `anilist_session` to pick from your currently watching list and fill a time budget with the best-matching episodes.
+
+**"Any sequels airing for stuff I've finished?"**
+Uses `anilist_sequels` to cross-reference your completed list with this season's lineup.
+
+**"What order do I watch Fate in?"**
+Uses `anilist_watch_order` to traverse the franchise relation graph and produce a numbered viewing order.
 
 **"Compare my taste with username123"**
-Uses `anilist_compare` to find shared titles, compute a compatibility score, highlight biggest disagreements, and suggest cross-recommendations between the two profiles.
-
-**"What's airing this season?"**
-Uses `anilist_seasonal` to show the current season's anime lineup sorted by popularity, with scores, genres, and episode counts.
+Uses `anilist_compare` to find shared titles, compute a compatibility score, and highlight biggest disagreements.
 
 **"Why would I like Vinland Saga?"**
-Uses `anilist_explain` to score a specific title against your taste profile, breaking down genre affinity, theme alignment, and community reception.
+Uses `anilist_explain` to score a title against your taste profile, breaking down genre affinity and theme alignment.
 
 **"Show me my anime year in review"**
-Uses `anilist_wrapped` to summarize everything you watched in a given year - titles completed, average score, top genres, most controversial pick, and total episodes.
+Uses `anilist_wrapped` to summarize everything you watched in a given year.
+
+## Mood config
+
+`anilist_pick` and `anilist_session` accept a freeform `mood` string. Built-in keywords include: dark, chill, hype, action, romantic, funny, brainy, sad, scary, epic, wholesome, intense, mystery, fantasy, scifi, trippy, nostalgic, artistic, competitive, cozy.
+
+To add or override keywords, set `ANILIST_MOOD_CONFIG` as a JSON object:
+
+```json
+{
+  "ANILIST_MOOD_CONFIG": "{\"cozy\":{\"boost\":[\"Slice of Life\",\"Iyashikei\"],\"penalize\":[\"Horror\"]},\"mykeyword\":{\"boost\":[\"Romance\"],\"penalize\":[]}}"
+}
+```
+
+Each key is a mood keyword mapping to `{ boost: string[], penalize: string[] }` arrays of AniList genres and tags.
 
 ## Privacy
 
