@@ -305,7 +305,7 @@ function formatTypeStats(stats: MediaTypeStats, label: string): string[] {
 }
 
 /** Format a single list entry with title, progress, score, and update date */
-function formatListEntry(
+export function formatListEntry(
   entry: AniListMediaListEntry,
   index: number,
   scoreFmt: ScoreFormat,

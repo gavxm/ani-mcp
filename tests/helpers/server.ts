@@ -10,13 +10,28 @@ import { registerDiscoverTools } from "../../src/tools/discover.js";
 import { registerInfoTools } from "../../src/tools/info.js";
 import { registerWriteTools } from "../../src/tools/write.js";
 import { registerSocialTools } from "../../src/tools/social.js";
+import { registerResources } from "../../src/resources.js";
+import { registerPrompts } from "../../src/prompts.js";
 
-// Capture tool definitions via a proxy
-function collectTools() {
-  const tools: Parameters<FastMCPSession["addPrompt"]>[] = [];
+// Capture tool, resource, and prompt definitions via a proxy
+function collectAll() {
+  const tools: unknown[] = [];
+  const resources: unknown[] = [];
+  const resourcesTemplates: unknown[] = [];
+  const prompts: unknown[] = [];
+
   const proxy = {
-    addTool(tool: unknown) {
-      tools.push(tool as never);
+    addTool(item: unknown) {
+      tools.push(item);
+    },
+    addResource(item: unknown) {
+      resources.push(item);
+    },
+    addResourceTemplate(item: unknown) {
+      resourcesTemplates.push(item);
+    },
+    addPrompt(item: unknown) {
+      prompts.push(item);
     },
   };
 
@@ -27,11 +42,13 @@ function collectTools() {
   registerInfoTools(proxy as never);
   registerWriteTools(proxy as never);
   registerSocialTools(proxy as never);
+  registerResources(proxy as never);
+  registerPrompts(proxy as never);
 
-  return tools;
+  return { tools, resources, resourcesTemplates, prompts };
 }
 
-const allTools = collectTools();
+const all = collectAll();
 
 /** Create a connected MCP test client */
 export async function createTestClient() {
@@ -41,10 +58,10 @@ export async function createTestClient() {
   const session = new FastMCPSession({
     name: "ani-mcp-test",
     version: "0.0.0",
-    tools: allTools as never,
-    prompts: [],
-    resources: [],
-    resourcesTemplates: [],
+    tools: all.tools as never,
+    prompts: all.prompts as never,
+    resources: all.resources as never,
+    resourcesTemplates: all.resourcesTemplates as never,
     transportType: "stdio",
     logger: { debug() {}, log() {}, info() {}, warn() {}, error() {} },
   });
@@ -65,6 +82,26 @@ export async function createTestClient() {
       const result = await client.callTool({ name, arguments: args });
       const content = result.content as Array<{ type: string; text: string }>;
       return content[0]?.text ?? "";
+    },
+
+    /** Read a resource and return its text content */
+    async readResource(uri: string): Promise<string> {
+      const result = await client.readResource({ uri });
+      const content = result.contents as Array<{ text?: string }>;
+      return content[0]?.text ?? "";
+    },
+
+    /** Get a prompt and return the message text */
+    async getPrompt(
+      name: string,
+      args: Record<string, string> = {},
+    ): Promise<string> {
+      const result = await client.getPrompt({ name, arguments: args });
+      const msg = result.messages[0];
+      if (msg?.content && typeof msg.content === "object" && "text" in msg.content) {
+        return msg.content.text as string;
+      }
+      return "";
     },
 
     /** Tear down the test connection */

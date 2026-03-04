@@ -126,6 +126,30 @@ Works with any MCP-compatible client.
 | `anilist_rate` | Score a title (0-10) |
 | `anilist_delete_from_list` | Remove an entry from your list |
 
+## Resources
+
+MCP resources provide context to your AI assistant without needing a tool call. Clients that support resources can automatically include this information in conversations.
+
+| Resource | Description |
+| --- | --- |
+| `anilist://profile` | Your AniList profile with bio, stats, and favourites |
+| `anilist://taste/{type}` | Taste profile (genre weights, themes, scoring patterns) for ANIME or MANGA |
+| `anilist://list/{type}` | Currently watching/reading entries with progress and scores |
+
+## Prompts
+
+Pre-built conversation starters that clients can offer as quick actions.
+
+| Prompt | Description |
+| --- | --- |
+| `seasonal_review` | Review this season's anime against your taste profile |
+| `what_to_watch` | Plan what to watch now with optional mood and time budget |
+| `roast_my_taste` | Get a humorous roast of your anime taste |
+| `compare_us` | Compare your taste with another user |
+| `year_in_review` | Your anime/manga year in review |
+| `explain_title` | Why would you like (or dislike) a specific title? |
+| `find_similar` | Find titles similar to one you enjoyed |
+
 ## Examples
 
 Here are some things you can ask your AI assistant once ani-mcp is connected:

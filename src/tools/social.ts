@@ -119,73 +119,7 @@ export function registerSocialTools(server: FastMCP): void {
           { cache: "stats" },
         );
 
-        const user = data.User;
-        const lines: string[] = [`# ${user.name}`, user.siteUrl, ""];
-
-        // About/bio
-        if (user.about) {
-          lines.push(truncateDescription(user.about, 500), "");
-        }
-
-        // Anime stats
-        const a = user.statistics.anime;
-        if (a.count > 0) {
-          const days = (a.minutesWatched / 1440).toFixed(1);
-          lines.push(
-            `## Anime: ${a.count} titles | ${a.episodesWatched} episodes | ${days} days | Mean ${a.meanScore.toFixed(1)}`,
-          );
-        }
-
-        // Manga stats
-        const m = user.statistics.manga;
-        if (m.count > 0) {
-          lines.push(
-            `## Manga: ${m.count} titles | ${m.chaptersRead} chapters | ${m.volumesRead} volumes | Mean ${m.meanScore.toFixed(1)}`,
-          );
-        }
-
-        // Favorites
-        const fav = user.favourites;
-        if (fav.anime.nodes.length) {
-          lines.push(
-            "",
-            "Favourite Anime: " +
-              fav.anime.nodes.map((n) => getTitle(n.title)).join(", "),
-          );
-        }
-        if (fav.manga.nodes.length) {
-          lines.push(
-            "Favourite Manga: " +
-              fav.manga.nodes.map((n) => getTitle(n.title)).join(", "),
-          );
-        }
-        if (fav.characters.nodes.length) {
-          lines.push(
-            "Favourite Characters: " +
-              fav.characters.nodes.map((n) => n.name.full).join(", "),
-          );
-        }
-        if (fav.staff.nodes.length) {
-          lines.push(
-            "Favourite Staff: " +
-              fav.staff.nodes.map((n) => n.name.full).join(", "),
-          );
-        }
-        if (fav.studios.nodes.length) {
-          lines.push(
-            "Favourite Studios: " +
-              fav.studios.nodes.map((n) => n.name).join(", "),
-          );
-        }
-
-        // Account age
-        const created = new Date(user.createdAt * 1000).toLocaleDateString(
-          "en-US",
-          { month: "short", year: "numeric" },
-        );
-        lines.push("", `Member since ${created}`);
-
-        return lines.join("\n");
+        return formatProfile(data.User);
       } catch (error) {
         return throwToolError(error, "fetching profile");
       }
@@ -286,6 +220,78 @@ export function registerSocialTools(server: FastMCP): void {
 }
 
 // === Formatting Helpers ===
+
+/** Format a user profile as text */
+export function formatProfile(
+  user: UserProfileResponse["User"],
+): string {
+  const lines: string[] = [`# ${user.name}`, user.siteUrl, ""];
+
+  // About/bio
+  if (user.about) {
+    lines.push(truncateDescription(user.about, 500), "");
+  }
+
+  // Anime stats
+  const a = user.statistics.anime;
+  if (a.count > 0) {
+    const days = (a.minutesWatched / 1440).toFixed(1);
+    lines.push(
+      `## Anime: ${a.count} titles | ${a.episodesWatched} episodes | ${days} days | Mean ${a.meanScore.toFixed(1)}`,
+    );
+  }
+
+  // Manga stats
+  const m = user.statistics.manga;
+  if (m.count > 0) {
+    lines.push(
+      `## Manga: ${m.count} titles | ${m.chaptersRead} chapters | ${m.volumesRead} volumes | Mean ${m.meanScore.toFixed(1)}`,
+    );
+  }
+
+  // Favourites
+  const fav = user.favourites;
+  if (fav.anime.nodes.length) {
+    lines.push(
+      "",
+      "Favourite Anime: " +
+        fav.anime.nodes.map((n) => getTitle(n.title)).join(", "),
+    );
+  }
+  if (fav.manga.nodes.length) {
+    lines.push(
+      "Favourite Manga: " +
+        fav.manga.nodes.map((n) => getTitle(n.title)).join(", "),
+    );
+  }
+  if (fav.characters.nodes.length) {
+    lines.push(
+      "Favourite Characters: " +
+        fav.characters.nodes.map((n) => n.name.full).join(", "),
+    );
+  }
+  if (fav.staff.nodes.length) {
+    lines.push(
+      "Favourite Staff: " +
+        fav.staff.nodes.map((n) => n.name.full).join(", "),
+    );
+  }
+  if (fav.studios.nodes.length) {
+    lines.push(
+      "Favourite Studios: " +
+        fav.studios.nodes.map((n) => n.name).join(", "),
+    );
+  }
+
+  // Account age
+  const created = new Date(user.createdAt * 1000).toLocaleDateString(
+    "en-US",
+    { month: "short", year: "numeric" },
+  );
+  lines.push("", `Member since ${created}`);
+
+  return lines.join("\n");
+}
 
 /** Format a single activity entry */
 function formatActivity(activity: Activity, index: number): string {
