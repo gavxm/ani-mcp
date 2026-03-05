@@ -48,80 +48,38 @@
     }
   },
   "tools": [
-    {
-      "name": "anilist_search"
-    },
-    {
-      "name": "anilist_details"
-    },
-    {
-      "name": "anilist_seasonal"
-    },
-    {
-      "name": "anilist_recommendations"
-    },
-    {
-      "name": "anilist_list"
-    },
-    {
-      "name": "anilist_stats"
-    },
-    {
-      "name": "anilist_trending"
-    },
-    {
-      "name": "anilist_genres"
-    },
-    {
-      "name": "anilist_taste"
-    },
-    {
-      "name": "anilist_pick"
-    },
-    {
-      "name": "anilist_compare"
-    },
-    {
-      "name": "anilist_wrapped"
-    },
-    {
-      "name": "anilist_explain"
-    },
-    {
-      "name": "anilist_similar"
-    },
-    {
-      "name": "anilist_staff"
-    },
-    {
-      "name": "anilist_staff_search"
-    },
-    {
-      "name": "anilist_studio_search"
-    },
-    {
-      "name": "anilist_schedule"
-    },
-    {
-      "name": "anilist_characters"
-    },
-    {
-      "name": "anilist_whoami"
-    },
-    {
-      "name": "anilist_genre_list"
-    },
-    {
-      "name": "anilist_update_progress"
-    },
-    {
-      "name": "anilist_add_to_list"
-    },
-    {
-      "name": "anilist_rate"
-    },
-    {
-      "name": "anilist_delete_from_list"
-    }
+    { "name": "anilist_search" },
+    { "name": "anilist_details" },
+    { "name": "anilist_seasonal" },
+    { "name": "anilist_recommendations" },
+    { "name": "anilist_list" },
+    { "name": "anilist_stats" },
+    { "name": "anilist_trending" },
+    { "name": "anilist_genres" },
+    { "name": "anilist_genre_list" },
+    { "name": "anilist_taste" },
+    { "name": "anilist_pick" },
+    { "name": "anilist_session" },
+    { "name": "anilist_sequels" },
+    { "name": "anilist_watch_order" },
+    { "name": "anilist_compare" },
+    { "name": "anilist_wrapped" },
+    { "name": "anilist_explain" },
+    { "name": "anilist_similar" },
+    { "name": "anilist_staff" },
+    { "name": "anilist_staff_search" },
+    { "name": "anilist_studio_search" },
+    { "name": "anilist_schedule" },
+    { "name": "anilist_characters" },
+    { "name": "anilist_whoami" },
+    { "name": "anilist_profile" },
+    { "name": "anilist_feed" },
+    { "name": "anilist_reviews" },
+    { "name": "anilist_favourite" },
+    { "name": "anilist_activity" },
+    { "name": "anilist_update_progress" },
+    { "name": "anilist_add_to_list" },
+    { "name": "anilist_rate" },
+    { "name": "anilist_delete_from_list" }
   ]
 }
