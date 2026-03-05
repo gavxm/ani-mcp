@@ -1,6 +1,7 @@
 /** Builds a weighted taste profile from a user's scored anime/manga list */
 
-import type { AniListMediaListEntry, AniListDate } from "../types.js";
+import type { AniListMediaListEntry } from "../types.js";
+import { dateToEpoch } from "../utils.js";
 
 // === Types ===
 
@@ -263,14 +264,6 @@ function computeDecay(entry: AniListMediaListEntry): number {
   if (!epoch) return 1;
   const yearsSince = (now - epoch) / (365.25 * 24 * 3600);
   return Math.exp(-DECAY_LAMBDA * Math.max(0, yearsSince));
-}
-
-/** Convert an AniListDate to Unix epoch, or null if incomplete */
-function dateToEpoch(date: AniListDate): number | null {
-  if (date.year == null) return null;
-  const month = date.month ?? 1;
-  const day = date.day ?? 1;
-  return new Date(date.year, month - 1, day).getTime() / 1000;
 }
 
 /** Empty profile for users with too few scored entries */

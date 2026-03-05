@@ -9,28 +9,32 @@ export function makeMedia(
     tags: Array<{ name: string; rank: number; isMediaSpoiler: boolean }>;
     meanScore: number;
     episodes: number;
+    chapters: number;
     format: string;
     id: number;
     popularity: number;
+    type: string;
+    season: string;
+    seasonYear: number;
   }> = {},
 ): AniListMedia {
   return {
     id: overrides.id ?? 100,
-    type: "ANIME",
+    type: overrides.type ?? "ANIME",
     title: { romaji: "Test Anime", english: "Test Anime", native: null },
     format: overrides.format ?? "TV",
     status: "FINISHED",
     episodes: overrides.episodes ?? 12,
     duration: 24,
-    chapters: null,
+    chapters: overrides.chapters ?? null,
     volumes: null,
     meanScore: overrides.meanScore ?? 75,
     averageScore: 73,
     popularity: overrides.popularity ?? 30000,
     genres: overrides.genres ?? ["Action"],
     tags: overrides.tags ?? [],
-    season: "SPRING",
-    seasonYear: 2024,
+    season: overrides.season ?? "SPRING",
+    seasonYear: overrides.seasonYear ?? 2024,
     startDate: { year: 2024, month: 4, day: null },
     endDate: { year: 2024, month: 6, day: null },
     studios: { nodes: [{ name: "Studio" }] },
@@ -52,16 +56,33 @@ export function makeEntry(
     id: number;
     popularity: number;
     updatedAt: number;
-    completedAt: { year: number | null; month: number | null; day: number | null };
+    completedAt: {
+      year: number | null;
+      month: number | null;
+      day: number | null;
+    };
+    status: string;
+    progress: number;
+    startedAt: {
+      year: number | null;
+      month: number | null;
+      day: number | null;
+    };
+    episodes: number;
+    chapters: number;
+    meanScore: number;
+    type: string;
+    season: string;
+    seasonYear: number;
   }> = {},
 ): AniListMediaListEntry {
   return {
     id: overrides.id ?? 1,
     score: overrides.score ?? 8,
-    progress: 12,
-    status: "COMPLETED",
+    progress: overrides.progress ?? 12,
+    status: overrides.status ?? "COMPLETED",
     updatedAt: overrides.updatedAt ?? 1700000000,
-    startedAt: { year: 2023, month: 1, day: 1 },
+    startedAt: overrides.startedAt ?? { year: 2023, month: 1, day: 1 },
     completedAt: overrides.completedAt ?? { year: 2023, month: 3, day: 1 },
     notes: null,
     media: makeMedia({
@@ -70,6 +91,12 @@ export function makeEntry(
       format: overrides.format,
       id: overrides.id,
       popularity: overrides.popularity,
+      meanScore: overrides.meanScore,
+      episodes: overrides.episodes,
+      chapters: overrides.chapters,
+      type: overrides.type,
+      season: overrides.season,
+      seasonYear: overrides.seasonYear,
     }),
   };
 }

@@ -974,6 +974,40 @@ export function listGroupsHandler(
   });
 }
 
+/** Override list to return different entries per status */
+export function multiStatusListHandler(
+  statusMap: Record<string, ReturnType<typeof makeEntry>[]>,
+) {
+  return http.post(ANILIST_URL, async ({ request }) => {
+    const body = (await request.clone().json()) as {
+      query?: string;
+      variables?: Record<string, unknown>;
+    };
+    if (!matchQuery(body, "MediaListCollection")) return undefined;
+
+    const status = body.variables?.status as string | undefined;
+    // No status filter means return all groups
+    if (!status) {
+      const lists = Object.entries(statusMap).map(([s, entries]) => ({
+        name: s,
+        status: s,
+        isCustomList: false,
+        entries,
+      }));
+      return gql({ MediaListCollection: { lists } });
+    }
+
+    const entries = statusMap[status] ?? [];
+    return gql({
+      MediaListCollection: {
+        lists: entries.length
+          ? [{ name: status, status, isCustomList: false, entries }]
+          : [],
+      },
+    });
+  });
+}
+
 /** Override post activity to return specific data */
 export function activityHandler(activity: Record<string, unknown>) {
   return http.post(ANILIST_URL, async ({ request }) => {

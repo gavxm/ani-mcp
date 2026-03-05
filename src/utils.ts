@@ -1,7 +1,7 @@
 /** Formatting and resolution helpers. */
 
 import { UserError } from "fastmcp";
-import type { AniListMedia, ScoreFormat } from "./types.js";
+import type { AniListDate, AniListMedia, ScoreFormat } from "./types.js";
 
 /** Best available title, respecting ANILIST_TITLE_LANGUAGE preference */
 export function getTitle(title: AniListMedia["title"]): string {
@@ -179,6 +179,14 @@ export function resolveSeasonYear(
           : "FALL";
 
   return { season: currentSeason, year: currentYear };
+}
+
+/** Convert an AniListDate to Unix epoch seconds, or null if year is missing */
+export function dateToEpoch(date: AniListDate): number | null {
+  if (date.year == null) return null;
+  const month = date.month ?? 1;
+  const day = date.day ?? 1;
+  return new Date(date.year, month - 1, day).getTime() / 1000;
 }
 
 /** Display a normalized 0-10 score in the user's preferred format */

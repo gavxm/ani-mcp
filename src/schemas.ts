@@ -751,3 +751,124 @@ export const ReviewsInputSchema = z
   });
 
 export type ReviewsInput = z.infer<typeof ReviewsInputSchema>;
+
+// === 0.7.0 Analytics & Insight ===
+
+/** Input for score calibration analysis */
+export const CalibrationInputSchema = z.object({
+  username: usernameSchema
+    .optional()
+    .describe(
+      "AniList username. Falls back to configured default if not provided.",
+    ),
+  type: z
+    .enum(["ANIME", "MANGA"])
+    .default("ANIME")
+    .describe("Analyze anime or manga scores"),
+});
+
+export type CalibrationInput = z.infer<typeof CalibrationInputSchema>;
+
+/** Input for drop pattern analysis */
+export const DropPatternInputSchema = z.object({
+  username: usernameSchema
+    .optional()
+    .describe(
+      "AniList username. Falls back to configured default if not provided.",
+    ),
+  type: z
+    .enum(["ANIME", "MANGA"])
+    .default("ANIME")
+    .describe("Analyze anime or manga drops"),
+});
+
+export type DropPatternInput = z.infer<typeof DropPatternInputSchema>;
+
+/** Input for genre evolution over time */
+export const EvolutionInputSchema = z.object({
+  username: usernameSchema
+    .optional()
+    .describe(
+      "AniList username. Falls back to configured default if not provided.",
+    ),
+  type: z
+    .enum(["ANIME", "MANGA"])
+    .default("ANIME")
+    .describe("Track anime or manga taste evolution"),
+});
+
+export type EvolutionInput = z.infer<typeof EvolutionInputSchema>;
+
+/** Input for franchise completion tracking */
+export const CompletionistInputSchema = z.object({
+  username: usernameSchema
+    .optional()
+    .describe(
+      "AniList username. Falls back to configured default if not provided.",
+    ),
+  type: z
+    .enum(["ANIME", "MANGA"])
+    .default("ANIME")
+    .describe("Check anime or manga franchise completion"),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(20)
+    .default(10)
+    .describe("Number of franchise groups to show (default 10, max 20)"),
+});
+
+export type CompletionistInput = z.infer<typeof CompletionistInputSchema>;
+
+/** Input for seasonal pick-up and completion rates */
+export const SeasonalHitRateInputSchema = z.object({
+  username: usernameSchema
+    .optional()
+    .describe(
+      "AniList username. Falls back to configured default if not provided.",
+    ),
+  season: z
+    .enum(["WINTER", "SPRING", "SUMMER", "FALL"])
+    .optional()
+    .describe("Season to analyze. Defaults to last completed season."),
+  year: z
+    .number()
+    .int()
+    .min(2000)
+    .max(MAX_YEAR)
+    .optional()
+    .describe("Year to analyze. Defaults to current year."),
+  history: z
+    .number()
+    .int()
+    .min(1)
+    .max(8)
+    .default(4)
+    .describe("Number of past seasons to show (default 4, max 8)"),
+});
+
+export type SeasonalHitRateInput = z.infer<typeof SeasonalHitRateInputSchema>;
+
+/** Input for pace estimation */
+export const PaceInputSchema = z.object({
+  username: usernameSchema
+    .optional()
+    .describe(
+      "AniList username. Falls back to configured default if not provided.",
+    ),
+  mediaId: z
+    .number()
+    .int()
+    .positive()
+    .optional()
+    .describe(
+      "AniList media ID to estimate pace for. Omit for all current titles.",
+    ),
+  type: z
+    .enum(["ANIME", "MANGA"])
+    .default("ANIME")
+    .describe("Estimate pace for anime or manga"),
+});
+
+export type PaceInput = z.infer<typeof PaceInputSchema>;

@@ -10,6 +10,7 @@ import { registerDiscoverTools } from "./tools/discover.js";
 import { registerInfoTools } from "./tools/info.js";
 import { registerWriteTools } from "./tools/write.js";
 import { registerSocialTools } from "./tools/social.js";
+import { registerAnalyticsTools } from "./tools/analytics.js";
 import { registerResources } from "./resources.js";
 import { registerPrompts } from "./prompts.js";
 
@@ -25,7 +26,7 @@ if (!process.env.ANILIST_TOKEN) {
 
 const server = new FastMCP({
   name: "ani-mcp",
-  version: "0.6.2",
+  version: "0.7.0",
 });
 
 registerSearchTools(server);
@@ -35,6 +36,7 @@ registerDiscoverTools(server);
 registerInfoTools(server);
 registerWriteTools(server);
 registerSocialTools(server);
+registerAnalyticsTools(server);
 registerResources(server);
 registerPrompts(server);
 
