@@ -21,9 +21,17 @@ All requests are made to the [AniList GraphQL API](https://anilist.gitbook.io/an
 - **In-memory cache only.** API responses are cached in a short-lived LRU cache to reduce redundant requests. The cache is cleared when the process exits.
 - **No analytics or telemetry.** No usage data, crash reports, or metrics are collected.
 
+## Data Retention
+
+ani-mcp does not persist any data to disk. All cached API responses are held in memory only and are discarded when the process exits. No user data, credentials, or list information is retained between sessions.
+
 ## Third-Party Sharing
 
 ani-mcp does not share any data with third parties. Your AniList credentials and list data stay between your machine and AniList's servers.
+
+## Contact
+
+For privacy questions or concerns, open an issue at [github.com/gavxm/ani-mcp/issues](https://github.com/gavxm/ani-mcp/issues) or email [gavxm@pm.me](mailto:gavxm@pm.me).
 
 ## Changes
 
