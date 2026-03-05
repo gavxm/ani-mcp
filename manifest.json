@@ -147,11 +147,23 @@
     {
       "name": "anilist_delete_from_list"
     },
-    { "name": "anilist_calibration" },
-    { "name": "anilist_drops" },
-    { "name": "anilist_evolution" },
-    { "name": "anilist_completionist" },
-    { "name": "anilist_seasonal_stats" },
-    { "name": "anilist_pace" }
+    {
+      "name": "anilist_calibration"
+    },
+    {
+      "name": "anilist_drops"
+    },
+    {
+      "name": "anilist_evolution"
+    },
+    {
+      "name": "anilist_completionist"
+    },
+    {
+      "name": "anilist_seasonal_stats"
+    },
+    {
+      "name": "anilist_pace"
+    }
   ]
 }
