@@ -202,6 +202,13 @@ export const PickInputSchema = z.object({
     .positive()
     .optional()
     .describe("Filter out series longer than this episode count"),
+  exclude: z
+    .array(z.number().int().positive())
+    .max(50)
+    .optional()
+    .describe(
+      "Media IDs to exclude from results (e.g. from previous recommendations)",
+    ),
   limit: z
     .number()
     .int()
@@ -872,3 +879,101 @@ export const PaceInputSchema = z.object({
 });
 
 export type PaceInput = z.infer<typeof PaceInputSchema>;
+
+// === 0.8.0 Persistent Intelligence ===
+
+/** Input for undoing the last write operation */
+export const UndoInputSchema = z.object({});
+
+export type UndoInput = z.infer<typeof UndoInputSchema>;
+
+/** Input for listing unscored completed titles */
+export const UnscoredInputSchema = z.object({
+  username: usernameSchema
+    .optional()
+    .describe(
+      "AniList username. Falls back to configured default if not provided.",
+    ),
+  type: z
+    .enum(["ANIME", "MANGA"])
+    .default("ANIME")
+    .describe("Check anime or manga list for unscored titles"),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(50)
+    .default(20)
+    .describe("Number of unscored titles to return (default 20, max 50)"),
+});
+
+export type UnscoredInput = z.infer<typeof UnscoredInputSchema>;
+
+/** Input for batch-updating multiple list entries */
+export const BatchUpdateInputSchema = z.object({
+  username: usernameSchema
+    .optional()
+    .describe(
+      "AniList username. Falls back to configured default if not provided.",
+    ),
+  type: z
+    .enum(["ANIME", "MANGA"])
+    .default("ANIME")
+    .describe("Update anime or manga entries"),
+  filter: z.object({
+    status: z
+      .enum(["CURRENT", "COMPLETED", "PLANNING", "DROPPED", "PAUSED"])
+      .optional()
+      .describe("Only match entries with this status"),
+    scoreBelow: z
+      .number()
+      .min(0)
+      .max(10)
+      .optional()
+      .describe("Only match entries scored below this value"),
+    scoreAbove: z
+      .number()
+      .min(0)
+      .max(10)
+      .optional()
+      .describe("Only match entries scored above this value"),
+    unscored: z
+      .boolean()
+      .optional()
+      .describe("Only match entries with no score"),
+  }),
+  action: z.object({
+    setStatus: z
+      .enum([
+        "CURRENT",
+        "PLANNING",
+        "COMPLETED",
+        "DROPPED",
+        "PAUSED",
+        "REPEATING",
+      ])
+      .optional()
+      .describe("Change status to this value"),
+    setScore: z
+      .number()
+      .min(0)
+      .max(10)
+      .optional()
+      .describe("Set score to this value (0 removes score)"),
+  }),
+  dryRun: z
+    .boolean()
+    .default(true)
+    .describe(
+      "Preview changes without applying them. Set to false to execute.",
+    ),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(100)
+    .default(50)
+    .describe("Max entries to update in one call (default 50, max 100)"),
+});
+
+export type BatchUpdateInput = z.infer<typeof BatchUpdateInputSchema>;

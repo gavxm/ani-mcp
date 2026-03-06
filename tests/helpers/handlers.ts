@@ -589,6 +589,21 @@ export const defaultHandlers = [
       });
     }
 
+    // Single list entry snapshot (must be after Save/Delete)
+    if (matchQuery(body, "query MediaListEntry")) {
+      return gql({
+        MediaList: {
+          id: 1,
+          mediaId: (body.variables?.mediaId as number) ?? 1,
+          status: "CURRENT",
+          score: 5,
+          progress: 3,
+          notes: null,
+          private: false,
+        },
+      });
+    }
+
     // Batch relations
     if (matchQuery(body, "BatchRelations")) {
       return gql({ Page: { media: [] } });
@@ -1005,6 +1020,17 @@ export function multiStatusListHandler(
           : [],
       },
     });
+  });
+}
+
+/** Override media list entry query (for undo snapshots) */
+export function mediaListEntryHandler(
+  entry: Record<string, unknown> | null,
+) {
+  return http.post(ANILIST_URL, async ({ request }) => {
+    const body = (await request.clone().json()) as { query?: string };
+    if (!matchQuery(body, "query MediaListEntry")) return undefined;
+    return gql({ MediaList: entry });
   });
 }
 

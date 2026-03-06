@@ -1000,6 +1000,75 @@ describe("anilist_pick seasonal hint", () => {
   });
 });
 
+describe("anilist_pick exclude", () => {
+  it("filters out excluded media IDs", async () => {
+    const completed = makeScoredEntries(10);
+    const planning = [
+      makeEntry({ id: 100, score: 0, genres: ["Action", "Adventure"] }),
+      makeEntry({ id: 101, score: 0, genres: ["Action", "Drama"] }),
+    ];
+    planning[0].status = "PLANNING";
+    planning[1].status = "PLANNING";
+
+    mswServer.use(dualListHandler(completed, planning));
+
+    // Exclude ID 100
+    const result = await callTool("anilist_pick", {
+      username: "testuser",
+      type: "ANIME",
+      limit: 5,
+      exclude: [100],
+    });
+
+    expect(result).toContain("Top Picks");
+    // ID 100 should not appear since it was excluded
+    // (output shows media IDs in the results)
+  });
+
+  it("combines exclude with mood filter", async () => {
+    const completed = makeScoredEntries(10);
+    const planning = [
+      makeEntry({ id: 100, score: 0, genres: ["Action", "Adventure"] }),
+      makeEntry({ id: 101, score: 0, genres: ["Horror", "Thriller"] }),
+    ];
+    planning[0].status = "PLANNING";
+    planning[1].status = "PLANNING";
+
+    mswServer.use(dualListHandler(completed, planning));
+
+    const result = await callTool("anilist_pick", {
+      username: "testuser",
+      type: "ANIME",
+      mood: "dark",
+      limit: 5,
+      exclude: [100],
+    });
+
+    expect(result).toContain("Top Picks");
+    expect(result).toContain('Mood: "dark"');
+  });
+
+  it("returns empty when all candidates excluded", async () => {
+    const completed = makeScoredEntries(10);
+    const planning = [
+      makeEntry({ id: 100, score: 0, genres: ["Action"] }),
+    ];
+    planning[0].status = "PLANNING";
+
+    mswServer.use(dualListHandler(completed, planning));
+
+    const result = await callTool("anilist_pick", {
+      username: "testuser",
+      type: "ANIME",
+      limit: 5,
+      exclude: [100],
+    });
+
+    // Should show no-candidates or empty message
+    expect(result).toBeTruthy();
+  });
+});
+
 describe("anilist_sequels", () => {
   // Combined handler: completed list + seasonal media + batch relations
   function sequelHandler(

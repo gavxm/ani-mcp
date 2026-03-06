@@ -1,4 +1,4 @@
-/** Write tools: list mutations, favourites, and activity posting. */
+/** Write tools: list mutations, favourites, activity, undo, batch, and unscored. */
 
 import type { FastMCP } from "fastmcp";
 import { anilistClient } from "../api/client.js";
@@ -8,7 +8,11 @@ import {
   TOGGLE_FAVOURITE_MUTATION,
   SAVE_TEXT_ACTIVITY_MUTATION,
   VIEWER_QUERY,
+  MEDIA_LIST_ENTRY_QUERY,
 } from "../api/queries.js";
+import type { EntrySnapshot } from "../engine/undo.js";
+import { pushUndo, popUndo } from "../engine/undo.js";
+import { invalidateUserProfiles } from "../engine/profile-cache.js";
 import {
   UpdateProgressInputSchema,
   AddToListInputSchema,
@@ -16,6 +20,9 @@ import {
   DeleteFromListInputSchema,
   FavouriteInputSchema,
   PostActivityInputSchema,
+  UndoInputSchema,
+  UnscoredInputSchema,
+  BatchUpdateInputSchema,
 } from "../schemas.js";
 import type {
   SaveMediaListEntryResponse,
@@ -23,8 +30,15 @@ import type {
   ToggleFavouriteResponse,
   SaveTextActivityResponse,
   ViewerResponse,
+  MediaListEntryResponse,
 } from "../types.js";
-import { throwToolError, formatScore, detectScoreFormat } from "../utils.js";
+import {
+  throwToolError,
+  formatScore,
+  detectScoreFormat,
+  getTitle,
+  getDefaultUsername,
+} from "../utils.js";
 
 // === Auth Guard ===
 
@@ -35,6 +49,52 @@ function requireAuth(): void {
       "ANILIST_TOKEN is not set. Write operations require an authenticated AniList account.",
     );
   }
+}
+
+// === Undo Helpers ===
+
+/** Get the authenticated user's username */
+async function getViewerName(): Promise<string> {
+  const data = await anilistClient.query<ViewerResponse>(
+    VIEWER_QUERY,
+    {},
+    { cache: "stats" },
+  );
+  return data.Viewer.name;
+}
+
+/** Snapshot a list entry before mutation */
+async function snapshotByMediaId(
+  mediaId: number,
+): Promise<EntrySnapshot | null> {
+  const userName = await getViewerName();
+  const data = await anilistClient.query<MediaListEntryResponse>(
+    MEDIA_LIST_ENTRY_QUERY,
+    { mediaId, userName },
+    { cache: null },
+  );
+  return data.MediaList ?? null;
+}
+
+/** Snapshot a list entry by its entry ID */
+async function snapshotByEntryId(
+  entryId: number,
+): Promise<EntrySnapshot | null> {
+  const data = await anilistClient.query<MediaListEntryResponse>(
+    MEDIA_LIST_ENTRY_QUERY,
+    { id: entryId },
+    { cache: null },
+  );
+  return data.MediaList ?? null;
+}
+
+/** Format an undo hint for output */
+function undoHint(before: EntrySnapshot | null): string {
+  if (!before) return '(New entry - say "undo" to remove)';
+  const parts = [before.status];
+  if (before.progress > 0) parts.push(`progress ${before.progress}`);
+  if (before.score > 0) parts.push(`score ${before.score}`);
+  return `(Previous: ${parts.join(", ")} - say "undo" to revert)`;
 }
 
 // === Tool Registration ===
@@ -62,6 +122,9 @@ export function registerWriteTools(server: FastMCP): void {
       try {
         requireAuth();
 
+        // Snapshot before mutation
+        const before = await snapshotByMediaId(args.mediaId);
+
         const variables: Record<string, unknown> = {
           mediaId: args.mediaId,
           progress: args.progress,
@@ -75,13 +138,26 @@ export function registerWriteTools(server: FastMCP): void {
         );
 
         anilistClient.clearCache();
+        invalidateUserProfiles(await getViewerName());
 
         const entry = data.SaveMediaListEntry;
+
+        // Track for undo
+        pushUndo({
+          operation: before
+            ? { type: "update", before }
+            : { type: "create", entryId: entry.id, mediaId: args.mediaId },
+          toolName: "anilist_update_progress",
+          timestamp: Date.now(),
+          description: `Set progress to ${args.progress} on media ${args.mediaId}`,
+        });
+
         return [
           `Progress updated.`,
           `Status: ${entry.status}`,
           `Progress: ${entry.progress}`,
           `Entry ID: ${entry.id}`,
+          undoHint(before),
         ].join("\n");
       } catch (error) {
         return throwToolError(error, "updating progress");
@@ -110,6 +186,9 @@ export function registerWriteTools(server: FastMCP): void {
       try {
         requireAuth();
 
+        // Snapshot before mutation
+        const before = await snapshotByMediaId(args.mediaId);
+
         const variables: Record<string, unknown> = {
           mediaId: args.mediaId,
           status: args.status,
@@ -134,8 +213,20 @@ export function registerWriteTools(server: FastMCP): void {
         ]);
 
         anilistClient.clearCache();
+        invalidateUserProfiles(await getViewerName());
 
         const entry = data.SaveMediaListEntry;
+
+        // Track for undo
+        pushUndo({
+          operation: before
+            ? { type: "update", before }
+            : { type: "create", entryId: entry.id, mediaId: args.mediaId },
+          toolName: "anilist_add_to_list",
+          timestamp: Date.now(),
+          description: `Set status to ${args.status} on media ${args.mediaId}`,
+        });
+
         const scoreStr =
           entry.score > 0
             ? ` | Score: ${formatScore(entry.score, scoreFmt)}`
@@ -144,6 +235,7 @@ export function registerWriteTools(server: FastMCP): void {
           `Added to list.`,
           `Status: ${entry.status}${scoreStr}`,
           `Entry ID: ${entry.id}`,
+          undoHint(before),
         ].join("\n");
       } catch (error) {
         return throwToolError(error, "adding to list");
@@ -171,6 +263,9 @@ export function registerWriteTools(server: FastMCP): void {
       try {
         requireAuth();
 
+        // Snapshot before mutation
+        const before = await snapshotByMediaId(args.mediaId);
+
         const [data, scoreFmt] = await Promise.all([
           anilistClient.query<SaveMediaListEntryResponse>(
             SAVE_MEDIA_LIST_ENTRY_MUTATION,
@@ -188,13 +283,27 @@ export function registerWriteTools(server: FastMCP): void {
         ]);
 
         anilistClient.clearCache();
+        invalidateUserProfiles(await getViewerName());
 
         const entry = data.SaveMediaListEntry;
+
+        // Track for undo
+        if (before) {
+          pushUndo({
+            operation: { type: "update", before },
+            toolName: "anilist_rate",
+            timestamp: Date.now(),
+            description: `Set score to ${args.score} on media ${args.mediaId}`,
+          });
+        }
+
         const scoreDisplay =
           args.score === 0
             ? "Score removed."
             : `Score set to ${formatScore(entry.score, scoreFmt)}.`;
-        return [scoreDisplay, `Entry ID: ${entry.id}`].join("\n");
+        const lines = [scoreDisplay, `Entry ID: ${entry.id}`];
+        if (before) lines.push(undoHint(before));
+        return lines.join("\n");
       } catch (error) {
         return throwToolError(error, "rating");
       }
@@ -221,6 +330,9 @@ export function registerWriteTools(server: FastMCP): void {
       try {
         requireAuth();
 
+        // Snapshot before deletion
+        const before = await snapshotByEntryId(args.entryId);
+
         const data = await anilistClient.query<DeleteMediaListEntryResponse>(
           DELETE_MEDIA_LIST_ENTRY_MUTATION,
           { id: args.entryId },
@@ -228,12 +340,131 @@ export function registerWriteTools(server: FastMCP): void {
         );
 
         anilistClient.clearCache();
+        invalidateUserProfiles(await getViewerName());
 
-        return data.DeleteMediaListEntry.deleted
-          ? `Entry ${args.entryId} deleted from your list.`
-          : `Entry ${args.entryId} was not found or already removed.`;
+        if (!data.DeleteMediaListEntry.deleted) {
+          return `Entry ${args.entryId} was not found or already removed.`;
+        }
+
+        // Track for undo
+        if (before) {
+          pushUndo({
+            operation: { type: "delete", before },
+            toolName: "anilist_delete_from_list",
+            timestamp: Date.now(),
+            description: `Deleted entry ${args.entryId} (media ${before.mediaId})`,
+          });
+        }
+
+        const hint = before
+          ? `\n(Deleted ${before.status} entry - say "undo" to restore)`
+          : "";
+        return `Entry ${args.entryId} deleted from your list.${hint}`;
       } catch (error) {
         return throwToolError(error, "deleting from list");
+      }
+    },
+  });
+
+  // === Undo ===
+
+  server.addTool({
+    name: "anilist_undo",
+    description:
+      "Undo the last write operation (update progress, add to list, rate, delete, or batch update). " +
+      "Restores the previous state of the affected list entry. " +
+      "Requires ANILIST_TOKEN.",
+    parameters: UndoInputSchema,
+    annotations: {
+      title: "Undo",
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
+    execute: async () => {
+      try {
+        requireAuth();
+
+        const record = popUndo();
+        if (!record) return "Nothing to undo.";
+
+        const op = record.operation;
+
+        if (op.type === "update") {
+          // Restore previous entry state
+          await anilistClient.query<SaveMediaListEntryResponse>(
+            SAVE_MEDIA_LIST_ENTRY_MUTATION,
+            {
+              mediaId: op.before.mediaId,
+              status: op.before.status,
+              scoreRaw: op.before.score * 10,
+              progress: op.before.progress,
+            },
+            { cache: null },
+          );
+          anilistClient.clearCache();
+          invalidateUserProfiles(await getViewerName());
+          return `Undone: restored media ${op.before.mediaId} to ${op.before.status}, progress ${op.before.progress}, score ${op.before.score}.`;
+        }
+
+        if (op.type === "create") {
+          // Delete the newly created entry
+          await anilistClient.query<DeleteMediaListEntryResponse>(
+            DELETE_MEDIA_LIST_ENTRY_MUTATION,
+            { id: op.entryId },
+            { cache: null },
+          );
+          anilistClient.clearCache();
+          invalidateUserProfiles(await getViewerName());
+          return `Undone: removed media ${op.mediaId} from your list.`;
+        }
+
+        if (op.type === "delete") {
+          // Re-create the deleted entry
+          await anilistClient.query<SaveMediaListEntryResponse>(
+            SAVE_MEDIA_LIST_ENTRY_MUTATION,
+            {
+              mediaId: op.before.mediaId,
+              status: op.before.status,
+              scoreRaw: op.before.score * 10,
+              progress: op.before.progress,
+            },
+            { cache: null },
+          );
+          anilistClient.clearCache();
+          invalidateUserProfiles(await getViewerName());
+          return `Undone: restored media ${op.before.mediaId} to ${op.before.status}, progress ${op.before.progress}.`;
+        }
+
+        if (op.type === "batch") {
+          // Restore all entries in the batch
+          let restored = 0;
+          for (const item of op.entries) {
+            try {
+              await anilistClient.query<SaveMediaListEntryResponse>(
+                SAVE_MEDIA_LIST_ENTRY_MUTATION,
+                {
+                  mediaId: item.before.mediaId,
+                  status: item.before.status,
+                  scoreRaw: item.before.score * 10,
+                  progress: item.before.progress,
+                },
+                { cache: null },
+              );
+              restored++;
+            } catch {
+              // Continue on individual failures
+            }
+          }
+          anilistClient.clearCache();
+          invalidateUserProfiles(await getViewerName());
+          return `Undone: restored ${restored}/${op.entries.length} entries to their previous state.`;
+        }
+
+        return "Unknown undo operation type.";
+      } catch (error) {
+        return throwToolError(error, "undoing operation");
       }
     },
   });
@@ -347,6 +578,227 @@ export function registerWriteTools(server: FastMCP): void {
         ].join("\n");
       } catch (error) {
         return throwToolError(error, "posting activity");
+      }
+    },
+  });
+
+  // === Unscored Listing ===
+
+  server.addTool({
+    name: "anilist_unscored",
+    description:
+      "List completed anime or manga that haven't been scored yet. " +
+      "Use when the user wants to catch up on scoring, find unrated titles, " +
+      "or do a batch scoring session. Returns titles sorted by most recently completed.",
+    parameters: UnscoredInputSchema,
+    annotations: {
+      title: "Unscored Titles",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: true,
+    },
+    execute: async (args) => {
+      try {
+        const username = getDefaultUsername(args.username);
+        const entries = await anilistClient.fetchList(
+          username,
+          args.type,
+          "COMPLETED",
+        );
+
+        // Filter to unscored, sort by most recently completed
+        const unscored = entries
+          .filter((e) => e.score === 0)
+          .sort((a, b) => b.updatedAt - a.updatedAt)
+          .slice(0, args.limit);
+
+        if (unscored.length === 0) {
+          const total = entries.length;
+          return `All ${total} completed ${args.type.toLowerCase()} titles are scored.`;
+        }
+
+        const totalUnscored = entries.filter((e) => e.score === 0).length;
+        const lines: string[] = [
+          `# Unscored ${args.type.toLowerCase()} for ${username}`,
+          "",
+          `${totalUnscored} completed but unscored (showing ${unscored.length}).`,
+          "",
+        ];
+
+        for (const e of unscored) {
+          const title = getTitle(e.media.title);
+          const format = e.media.format ?? "?";
+          const community =
+            e.media.meanScore != null
+              ? ` - Community: ${e.media.meanScore}`
+              : "";
+          const genres =
+            e.media.genres.length > 0
+              ? `  Genres: ${e.media.genres.join(", ")}`
+              : "";
+          lines.push(`${title} (${format})${community}`);
+          if (genres) lines.push(genres);
+          lines.push(`  Media ID: ${e.media.id}`);
+        }
+
+        lines.push(
+          "",
+          "Use anilist_rate with the media ID to score each title.",
+        );
+
+        return lines.join("\n");
+      } catch (error) {
+        return throwToolError(error, "listing unscored titles");
+      }
+    },
+  });
+
+  // === Batch Update ===
+
+  server.addTool({
+    name: "anilist_batch_update",
+    description:
+      "Apply a bulk action to multiple list entries matching a filter. " +
+      "Use when the user wants to move all low-scored titles to Dropped, " +
+      "add all planning titles to current, or bulk-change statuses. " +
+      "Defaults to dry-run mode (preview only). Requires ANILIST_TOKEN.",
+    parameters: BatchUpdateInputSchema,
+    annotations: {
+      title: "Batch Update",
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
+    execute: async (args) => {
+      try {
+        requireAuth();
+
+        const username = getDefaultUsername(args.username);
+
+        // Fetch entries, optionally filtering by status
+        const entries = await anilistClient.fetchList(
+          username,
+          args.type,
+          args.filter.status,
+        );
+
+        // Apply client-side filters
+        let matched = entries;
+        const { scoreBelow, scoreAbove } = args.filter;
+        if (scoreBelow !== undefined) {
+          matched = matched.filter((e) => e.score > 0 && e.score < scoreBelow);
+        }
+        if (scoreAbove !== undefined) {
+          matched = matched.filter((e) => e.score > 0 && e.score > scoreAbove);
+        }
+        if (args.filter.unscored) {
+          matched = matched.filter((e) => e.score === 0);
+        }
+
+        // Cap at limit
+        matched = matched.slice(0, args.limit);
+
+        if (matched.length === 0) {
+          return "No entries match the specified filter.";
+        }
+
+        // Build action description
+        const actionParts: string[] = [];
+        if (args.action.setStatus)
+          actionParts.push(`status -> ${args.action.setStatus}`);
+        if (args.action.setScore !== undefined)
+          actionParts.push(`score -> ${args.action.setScore}`);
+        const actionStr = actionParts.join(", ");
+
+        if (args.dryRun) {
+          // Preview mode
+          const lines: string[] = [
+            `# Batch Update Preview`,
+            "",
+            `Action: ${actionStr}`,
+            `Matched: ${matched.length} entries`,
+            "",
+          ];
+
+          for (const e of matched.slice(0, 20)) {
+            const title = getTitle(e.media.title);
+            const format = e.media.format ?? "?";
+            const score = e.score > 0 ? `, score ${e.score}` : "";
+            lines.push(`  ${title} (${format}) - ${e.status}${score}`);
+          }
+
+          if (matched.length > 20) {
+            lines.push(`  ... and ${matched.length - 20} more`);
+          }
+
+          lines.push("", "Run again with dryRun: false to apply.");
+
+          return lines.join("\n");
+        }
+
+        // Execute mutations
+        const snapshots: Array<{ before: EntrySnapshot }> = [];
+        let successes = 0;
+        let failures = 0;
+
+        for (const e of matched) {
+          try {
+            // Snapshot before mutation
+            const before: EntrySnapshot = {
+              id: e.id,
+              mediaId: e.media.id,
+              status: e.status,
+              score: e.score,
+              progress: e.progress,
+              notes: e.notes,
+              private: false,
+            };
+
+            const vars: Record<string, unknown> = { mediaId: e.media.id };
+            if (args.action.setStatus) vars.status = args.action.setStatus;
+            if (args.action.setScore !== undefined)
+              vars.scoreRaw = Math.round(args.action.setScore * 10);
+
+            await anilistClient.query<SaveMediaListEntryResponse>(
+              SAVE_MEDIA_LIST_ENTRY_MUTATION,
+              vars,
+              { cache: null },
+            );
+
+            snapshots.push({ before });
+            successes++;
+          } catch {
+            failures++;
+          }
+        }
+
+        anilistClient.clearCache();
+        invalidateUserProfiles(await getViewerName());
+
+        // Track batch for undo
+        if (snapshots.length > 0) {
+          pushUndo({
+            operation: { type: "batch", entries: snapshots },
+            toolName: "anilist_batch_update",
+            timestamp: Date.now(),
+            description: `Batch: ${actionStr} on ${snapshots.length} entries`,
+          });
+        }
+
+        const lines: string[] = [
+          `# Batch Update Complete`,
+          "",
+          `Updated ${successes} of ${matched.length} entries (${actionStr}).`,
+        ];
+        if (failures > 0) lines.push(`${failures} entries failed.`);
+        if (snapshots.length > 0)
+          lines.push(`Say "undo" to revert all ${snapshots.length} changes.`);
+
+        return lines.join("\n");
+      } catch (error) {
+        return throwToolError(error, "batch updating entries");
       }
     },
   });

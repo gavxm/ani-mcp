@@ -117,6 +117,17 @@ Works with any MCP-compatible client.
 | `anilist_favourite` | Toggle favourite on anime, manga, character, staff, or studio |
 | `anilist_activity` | Post a text activity to your feed |
 
+### Analytics
+
+| Tool | Description |
+| --- | --- |
+| `anilist_calibration` | Per-genre scoring bias vs community consensus |
+| `anilist_drops` | Drop pattern analysis - genre/tag clusters and median drop point |
+| `anilist_evolution` | How your taste shifted across 2-year time windows |
+| `anilist_completionist` | Franchise completion tracking via relation graph |
+| `anilist_seasonal_stats` | Per-season pick/finish/drop rates |
+| `anilist_pace` | Estimated completion date for currently watching titles |
+
 ### Write (requires `ANILIST_TOKEN`)
 
 | Tool | Description |
@@ -125,6 +136,9 @@ Works with any MCP-compatible client.
 | `anilist_add_to_list` | Add a title to your list with a status |
 | `anilist_rate` | Score a title (0-10) |
 | `anilist_delete_from_list` | Remove an entry from your list |
+| `anilist_undo` | Undo the last write operation |
+| `anilist_unscored` | List completed but unscored titles for batch scoring |
+| `anilist_batch_update` | Bulk filter + action on list entries (dry-run default) |
 
 ## Resources
 

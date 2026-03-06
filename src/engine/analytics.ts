@@ -364,4 +364,3 @@ function median(values: number[]): number {
   }
   return sorted[mid];
 }
-

@@ -408,6 +408,21 @@ export const SAVE_MEDIA_LIST_ENTRY_MUTATION = `
   }
 `;
 
+/** Fetch a single list entry for snapshotting before mutations */
+export const MEDIA_LIST_ENTRY_QUERY = `
+  query MediaListEntry($id: Int, $mediaId: Int, $userName: String) {
+    MediaList(id: $id, mediaId: $mediaId, userName: $userName) {
+      id
+      mediaId
+      status
+      score(format: POINT_10)
+      progress
+      notes
+      private
+    }
+  }
+`;
+
 /** Remove a list entry */
 export const DELETE_MEDIA_LIST_ENTRY_MUTATION = `
   mutation DeleteMediaListEntry($id: Int!) {

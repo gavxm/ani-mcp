@@ -53,6 +53,11 @@ import {
 } from "../engine/compare.js";
 import { rankSimilar } from "../engine/similar.js";
 import { buildWatchOrder, type RelationNode } from "../engine/franchise.js";
+import {
+  computeListHash,
+  getCachedProfile,
+  setCachedProfile,
+} from "../engine/profile-cache.js";
 
 // User scores are normalized to 1-10 via score(format: POINT_10) in the list query.
 // Community meanScore is 0-100. Multiply user score by 10 to compare on the same scale.
@@ -86,22 +91,33 @@ async function discoverByTaste(
   return data.Page.media.filter((m) => !completedIds.has(m.id));
 }
 
-/** Build a taste profile for a username, optionally merging anime and manga */
+/** Build a taste profile for a username, with LRU caching */
 async function profileForUser(
   username: string,
   type: "ANIME" | "MANGA" | "BOTH",
 ): Promise<{ profile: TasteProfile; entries: AniListMediaListEntry[] }> {
+  let entries: AniListMediaListEntry[];
+
   if (type === "BOTH") {
     const [anime, manga] = await Promise.all([
       anilistClient.fetchList(username, "ANIME", "COMPLETED"),
       anilistClient.fetchList(username, "MANGA", "COMPLETED"),
     ]);
-    const all = [...anime, ...manga];
-    return { profile: buildTasteProfile(all), entries: all };
+    entries = [...anime, ...manga];
+  } else {
+    entries = await anilistClient.fetchList(username, type, "COMPLETED");
   }
 
-  const entries = await anilistClient.fetchList(username, type, "COMPLETED");
-  return { profile: buildTasteProfile(entries), entries };
+  // Check profile cache
+  const cacheKey = `${username}::${type}`;
+  const hash = computeListHash(entries);
+  const cached = getCachedProfile(cacheKey, hash);
+  if (cached) return { profile: cached, entries };
+
+  // Rebuild and cache
+  const profile = buildTasteProfile(entries);
+  setCachedProfile(cacheKey, profile, hash);
+  return { profile, entries };
 }
 
 // === Tool Registration ===
@@ -289,6 +305,12 @@ export function registerRecommendTools(server: FastMCP): void {
           candidates = candidates.filter(
             (m) => !m.episodes || m.episodes <= maxEps,
           );
+        }
+
+        // Exclude previously shown IDs
+        if (args.exclude?.length) {
+          const excludeSet = new Set(args.exclude);
+          candidates = candidates.filter((m) => !excludeSet.has(m.id));
         }
 
         if (candidates.length === 0) {

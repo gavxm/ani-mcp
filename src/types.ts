@@ -258,6 +258,19 @@ export interface CharacterSearchResponse {
   };
 }
 
+/** Single list entry snapshot for undo support */
+export interface MediaListEntryResponse {
+  MediaList: {
+    id: number;
+    mediaId: number;
+    status: string;
+    score: number;
+    progress: number;
+    notes: string | null;
+    private: boolean;
+  } | null;
+}
+
 /** Response from saving a list entry */
 export interface SaveMediaListEntryResponse {
   SaveMediaListEntry: {

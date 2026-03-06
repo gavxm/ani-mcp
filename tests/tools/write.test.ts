@@ -1,11 +1,15 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from "vitest";
 import { createTestClient } from "../helpers/server.js";
 import { mswServer } from "../helpers/msw.js";
 import {
   saveEntryHandler,
   deleteEntryHandler,
   favouriteHandler,
+  mediaListEntryHandler,
+  listHandler,
 } from "../helpers/handlers.js";
+import { makeEntry } from "../fixtures.js";
+import { clearUndoStack } from "../../src/engine/undo.js";
 
 let callTool: Awaited<ReturnType<typeof createTestClient>>["callTool"];
 let cleanup: Awaited<ReturnType<typeof createTestClient>>["cleanup"];
@@ -25,6 +29,8 @@ afterAll(async () => {
   else process.env.ANILIST_SCORE_FORMAT = savedScoreFormat;
   await cleanup();
 });
+
+beforeEach(() => clearUndoStack());
 
 // === anilist_update_progress ===
 
@@ -291,6 +297,238 @@ describe("anilist_activity", () => {
     try {
       const result = await callTool("anilist_activity", {
         text: "Hello!",
+      });
+      expect(result).toContain("ANILIST_TOKEN");
+    } finally {
+      process.env.ANILIST_TOKEN = saved;
+    }
+  });
+});
+
+// === Undo hints ===
+
+describe("undo hints", () => {
+  it("update_progress includes undo hint", async () => {
+    const result = await callTool("anilist_update_progress", {
+      mediaId: 1,
+      progress: 5,
+    });
+    expect(result).toContain("undo");
+  });
+
+  it("add_to_list includes undo hint for new entry", async () => {
+    mswServer.use(mediaListEntryHandler(null));
+    mswServer.use(
+      saveEntryHandler({
+        id: 50,
+        mediaId: 10,
+        status: "PLANNING",
+        score: 0,
+        progress: 0,
+      }),
+    );
+    const result = await callTool("anilist_add_to_list", {
+      mediaId: 10,
+      status: "PLANNING",
+    });
+    expect(result).toContain("undo");
+  });
+
+  it("delete includes undo hint", async () => {
+    const result = await callTool("anilist_delete_from_list", {
+      entryId: 42,
+    });
+    expect(result).toContain("undo");
+  });
+});
+
+// === anilist_undo ===
+
+describe("anilist_undo", () => {
+  it("returns nothing to undo on empty stack", async () => {
+    const result = await callTool("anilist_undo", {});
+    expect(result).toContain("Nothing to undo");
+  });
+
+  it("restores previous progress after update", async () => {
+    // First, update progress (pushes undo record)
+    await callTool("anilist_update_progress", {
+      mediaId: 1,
+      progress: 10,
+    });
+
+    // Now undo
+    const result = await callTool("anilist_undo", {});
+    expect(result).toContain("Undone");
+    expect(result).toContain("restored");
+  });
+
+  it("removes entry after undo of add (new entry)", async () => {
+    // Simulate adding a new entry (no prior entry)
+    mswServer.use(mediaListEntryHandler(null));
+    mswServer.use(
+      saveEntryHandler({
+        id: 77,
+        mediaId: 200,
+        status: "PLANNING",
+        score: 0,
+        progress: 0,
+      }),
+    );
+    await callTool("anilist_add_to_list", {
+      mediaId: 200,
+      status: "PLANNING",
+    });
+
+    // Undo should delete the new entry
+    const result = await callTool("anilist_undo", {});
+    expect(result).toContain("Undone");
+    expect(result).toContain("removed");
+  });
+
+  it("restores entry after undo of delete", async () => {
+    // Delete an entry (pushes delete undo record)
+    await callTool("anilist_delete_from_list", { entryId: 42 });
+
+    // Undo should re-create
+    const result = await callTool("anilist_undo", {});
+    expect(result).toContain("Undone");
+    expect(result).toContain("restored");
+  });
+
+  it("errors when ANILIST_TOKEN is missing", async () => {
+    const saved = process.env.ANILIST_TOKEN;
+    delete process.env.ANILIST_TOKEN;
+    try {
+      const result = await callTool("anilist_undo", {});
+      expect(result).toContain("ANILIST_TOKEN");
+    } finally {
+      process.env.ANILIST_TOKEN = saved;
+    }
+  });
+});
+
+// === anilist_unscored ===
+
+describe("anilist_unscored", () => {
+  it("returns unscored completed titles", async () => {
+    mswServer.use(
+      listHandler([
+        makeEntry({ id: 1, score: 0, genres: ["Action"] }),
+        makeEntry({ id: 2, score: 8, genres: ["Drama"] }),
+        makeEntry({ id: 3, score: 0, genres: ["Comedy"] }),
+      ]),
+    );
+    const result = await callTool("anilist_unscored", {
+      username: "testuser",
+    });
+    expect(result).toContain("Unscored");
+    expect(result).toContain("2 completed but unscored");
+    expect(result).toContain("Media ID:");
+  });
+
+  it("returns all-scored message when none are unscored", async () => {
+    mswServer.use(
+      listHandler([
+        makeEntry({ id: 1, score: 8 }),
+        makeEntry({ id: 2, score: 7 }),
+      ]),
+    );
+    const result = await callTool("anilist_unscored", {
+      username: "testuser",
+    });
+    expect(result).toContain("All");
+    expect(result).toContain("scored");
+  });
+
+  it("respects limit parameter", async () => {
+    const entries = Array.from({ length: 10 }, (_, i) =>
+      makeEntry({ id: i + 1, score: 0 }),
+    );
+    mswServer.use(listHandler(entries));
+    const result = await callTool("anilist_unscored", {
+      username: "testuser",
+      limit: 3,
+    });
+    expect(result).toContain("showing 3");
+  });
+});
+
+// === anilist_batch_update ===
+
+describe("anilist_batch_update", () => {
+  it("returns dry-run preview by default", async () => {
+    mswServer.use(
+      listHandler([
+        makeEntry({ id: 1, score: 3, status: "COMPLETED" }),
+        makeEntry({ id: 2, score: 4, status: "COMPLETED" }),
+        makeEntry({ id: 3, score: 8, status: "COMPLETED" }),
+      ]),
+    );
+    const result = await callTool("anilist_batch_update", {
+      username: "testuser",
+      filter: { scoreBelow: 5 },
+      action: { setStatus: "DROPPED" },
+    });
+    expect(result).toContain("Preview");
+    expect(result).toContain("Matched: 2");
+    expect(result).toContain("DROPPED");
+  });
+
+  it("executes mutations when dryRun is false", async () => {
+    mswServer.use(
+      listHandler([
+        makeEntry({ id: 1, score: 3, status: "COMPLETED" }),
+      ]),
+    );
+    const result = await callTool("anilist_batch_update", {
+      username: "testuser",
+      filter: { scoreBelow: 5 },
+      action: { setStatus: "DROPPED" },
+      dryRun: false,
+    });
+    expect(result).toContain("Complete");
+    expect(result).toContain("Updated 1");
+    expect(result).toContain("undo");
+  });
+
+  it("returns no matches for empty filter result", async () => {
+    mswServer.use(
+      listHandler([
+        makeEntry({ id: 1, score: 9, status: "COMPLETED" }),
+      ]),
+    );
+    const result = await callTool("anilist_batch_update", {
+      username: "testuser",
+      filter: { scoreBelow: 3 },
+      action: { setStatus: "DROPPED" },
+    });
+    expect(result).toContain("No entries match");
+  });
+
+  it("filters by unscored", async () => {
+    mswServer.use(
+      listHandler([
+        makeEntry({ id: 1, score: 0, status: "COMPLETED" }),
+        makeEntry({ id: 2, score: 8, status: "COMPLETED" }),
+      ]),
+    );
+    const result = await callTool("anilist_batch_update", {
+      username: "testuser",
+      filter: { unscored: true },
+      action: { setScore: 5 },
+    });
+    expect(result).toContain("Matched: 1");
+  });
+
+  it("errors when ANILIST_TOKEN is missing", async () => {
+    const saved = process.env.ANILIST_TOKEN;
+    delete process.env.ANILIST_TOKEN;
+    try {
+      const result = await callTool("anilist_batch_update", {
+        filter: { status: "COMPLETED" },
+        action: { setStatus: "DROPPED" },
+        dryRun: false,
       });
       expect(result).toContain("ANILIST_TOKEN");
     } finally {
