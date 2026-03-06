@@ -75,7 +75,13 @@ export function truncateDescription(
 ): string {
   if (!text) return "No description available.";
   // AniList descriptions can contain HTML even with asHtml: false
-  const clean = text.replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "");
+  let clean = text.replace(/<br\s*\/?>/gi, "\n");
+  // Loop to handle nested fragments like <scr<script>ipt>
+  let prev = "";
+  while (prev !== clean) {
+    prev = clean;
+    clean = clean.replace(/<[^>]+>/g, "");
+  }
   if (clean.length <= maxLength) return clean;
   const truncated = clean.slice(0, maxLength);
   const lastSpace = truncated.lastIndexOf(" ");
