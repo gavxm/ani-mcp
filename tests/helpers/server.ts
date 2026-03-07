@@ -12,6 +12,7 @@ import { registerWriteTools } from "../../src/tools/write.js";
 import { registerSocialTools } from "../../src/tools/social.js";
 import { registerAnalyticsTools } from "../../src/tools/analytics.js";
 import { registerImportTools } from "../../src/tools/import.js";
+import { registerCardTools } from "../../src/tools/cards.js";
 import { registerResources } from "../../src/resources.js";
 import { registerPrompts } from "../../src/prompts.js";
 
@@ -46,6 +47,7 @@ function collectAll() {
   registerSocialTools(proxy as never);
   registerAnalyticsTools(proxy as never);
   registerImportTools(proxy as never);
+  registerCardTools(proxy as never);
   registerResources(proxy as never);
   registerPrompts(proxy as never);
 
@@ -86,6 +88,15 @@ export async function createTestClient() {
       const result = await client.callTool({ name, arguments: args });
       const content = result.content as Array<{ type: string; text: string }>;
       return content[0]?.text ?? "";
+    },
+
+    /** Call a tool and return the raw content array */
+    async callToolRaw(
+      name: string,
+      args: Record<string, unknown> = {},
+    ): Promise<Array<{ type: string; text?: string; data?: string; mimeType?: string }>> {
+      const result = await client.callTool({ name, arguments: args });
+      return result.content as Array<{ type: string; text?: string; data?: string; mimeType?: string }>;
     },
 
     /** Read a resource and return its text content */

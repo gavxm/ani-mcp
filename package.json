@@ -49,15 +49,17 @@
     "lru-cache": "^11.2.6",
     "p-retry": "^7.1.1",
     "p-throttle": "^8.1.0",
+    "sharp": "^0.34.5",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "msw": "^2.12.10",
     "@types/node": "^25.3.3",
+    "@types/sharp": "^0.31.1",
     "@vitest/coverage-v8": "^4.0.18",
     "eslint": "^10.0.2",
     "eslint-config-prettier": "^10.1.8",
+    "msw": "^2.12.10",
     "prettier": "^3.8.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",

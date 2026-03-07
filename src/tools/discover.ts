@@ -206,7 +206,11 @@ export function registerDiscoverTools(server: FastMCP): void {
           >();
           for (const tag of tags) {
             const cat = tag.category || "Other";
-            if (args.category && cat.toLowerCase() !== args.category.toLowerCase()) continue;
+            if (
+              args.category &&
+              cat.toLowerCase() !== args.category.toLowerCase()
+            )
+              continue;
             const list = categories.get(cat);
             if (list) {
               list.push(tag);

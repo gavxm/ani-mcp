@@ -1049,3 +1049,32 @@ export const BatchUpdateInputSchema = z.object({
 });
 
 export type BatchUpdateInput = z.infer<typeof BatchUpdateInputSchema>;
+
+// === Shareable Cards ===
+
+/** Input for generating a taste profile card image */
+export const TasteCardInputSchema = z.object({
+  username: usernameSchema
+    .optional()
+    .describe(
+      "AniList username. Falls back to configured default if not provided.",
+    ),
+  type: z
+    .enum(["ANIME", "MANGA"])
+    .default("ANIME")
+    .describe("Build card from anime or manga list"),
+});
+
+export type TasteCardInput = z.infer<typeof TasteCardInputSchema>;
+
+/** Input for generating a compatibility card image */
+export const CompatCardInputSchema = z.object({
+  user1: usernameSchema.describe("First AniList username"),
+  user2: usernameSchema.describe("Second AniList username"),
+  type: z
+    .enum(["ANIME", "MANGA"])
+    .default("ANIME")
+    .describe("Compare anime or manga taste"),
+});
+
+export type CompatCardInput = z.infer<typeof CompatCardInputSchema>;

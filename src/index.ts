@@ -12,6 +12,7 @@ import { registerWriteTools } from "./tools/write.js";
 import { registerSocialTools } from "./tools/social.js";
 import { registerAnalyticsTools } from "./tools/analytics.js";
 import { registerImportTools } from "./tools/import.js";
+import { registerCardTools } from "./tools/cards.js";
 import { registerResources } from "./resources.js";
 import { registerPrompts } from "./prompts.js";
 
@@ -39,6 +40,7 @@ registerWriteTools(server);
 registerSocialTools(server);
 registerAnalyticsTools(server);
 registerImportTools(server);
+registerCardTools(server);
 registerResources(server);
 registerPrompts(server);
 

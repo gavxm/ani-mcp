@@ -97,6 +97,18 @@ Works with any MCP-compatible client.
 | `anilist_session` | Plan a viewing session within a time budget |
 | `anilist_mal_import` | Import a MyAnimeList user's list and generate recommendations |
 
+### Cards
+
+| Tool | Description |
+| --- | --- |
+| `anilist_taste_card` | Generate a shareable taste profile card as a PNG image |
+| `anilist_compat_card` | Generate a compatibility card comparing two users as a PNG image |
+
+<p align="center">
+  <img src="assets/taste-card.png" width="400" alt="Taste Profile Card">
+  <img src="assets/compat-card.png" width="400" alt="Compatibility Card">
+</p>
+
 ### Info
 
 | Tool | Description |
