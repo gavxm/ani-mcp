@@ -173,6 +173,12 @@
     },
     {
       "name": "anilist_batch_update"
+    },
+    {
+      "name": "anilist_taste_card"
+    },
+    {
+      "name": "anilist_compat_card"
     }
   ]
 }
