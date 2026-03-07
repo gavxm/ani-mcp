@@ -4,6 +4,7 @@ import type { FastMCP } from "fastmcp";
 import { anilistClient } from "../api/client.js";
 import {
   BATCH_RELATIONS_QUERY,
+  COMPLETED_BY_DATE_QUERY,
   DISCOVER_MEDIA_QUERY,
   MEDIA_DETAILS_QUERY,
   RECOMMENDATIONS_QUERY,
@@ -25,6 +26,7 @@ import type {
   MediaDetailsResponse,
   RecommendationsResponse,
   BatchRelationsResponse,
+  CompletedByDateResponse,
   AniListMediaListEntry,
   AniListMedia,
 } from "../types.js";
@@ -900,28 +902,38 @@ export function registerRecommendTools(server: FastMCP): void {
         const username = getDefaultUsername(args.username);
         const year = args.year ?? new Date().getFullYear();
 
-        // Fetch completed lists in parallel - filter to the target year client-side
         const types: Array<"ANIME" | "MANGA"> =
           args.type === "BOTH"
             ? ["ANIME", "MANGA"]
             : [args.type as "ANIME" | "MANGA"];
 
-        const lists = await Promise.all(
-          types.map((type) =>
-            anilistClient.fetchList(username, type, "COMPLETED"),
-          ),
-        );
-        const allEntries = lists.flat();
+        // Server-side date filter (FuzzyDateInt format: YYYYMMDD)
+        const completedAfter = year * 10000 + 100 + 1; // Jan 1
+        const completedBefore = year * 10000 + 1231; // Dec 31
 
-        // Filter to entries completed in the target year
-        const yearEntries = allEntries.filter((e) => {
-          // Prefer completedAt, fall back to updatedAt
-          if (e.completedAt?.year != null) return e.completedAt.year === year;
-          if (e.updatedAt) {
-            return new Date(e.updatedAt * 1000).getFullYear() === year;
+        // Paginate through results
+        const yearEntries: AniListMediaListEntry[] = [];
+        for (const type of types) {
+          let page = 1;
+          let hasNext = true;
+          while (hasNext) {
+            const data = await anilistClient.query<CompletedByDateResponse>(
+              COMPLETED_BY_DATE_QUERY,
+              {
+                userName: username,
+                type,
+                completedAfter,
+                completedBefore,
+                page,
+                perPage: 50,
+              },
+              { cache: "list" },
+            );
+            yearEntries.push(...data.Page.mediaList);
+            hasNext = data.Page.pageInfo.hasNextPage;
+            page++;
           }
-          return false;
-        });
+        }
 
         if (yearEntries.length === 0) {
           return `${username} didn't complete any titles in ${year}.`;
@@ -1000,7 +1012,7 @@ export function registerRecommendTools(server: FastMCP): void {
           }
         }
 
-        // Episode/chapter count (use progress, not media.episodes, for accuracy)
+        // Episode/chapter count
         const totalEps = anime.reduce((sum, e) => sum + (e.progress ?? 0), 0);
         const totalChapters = manga.reduce(
           (sum, e) => sum + (e.progress ?? 0),

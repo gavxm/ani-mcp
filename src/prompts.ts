@@ -202,6 +202,37 @@ export function registerPrompts(server: FastMCP): void {
     },
   });
 
+  // === Setup Wizard ===
+
+  server.addPrompt({
+    name: "setup",
+    description:
+      "Walk through connecting your AniList account to ani-mcp step by step.",
+    arguments: [],
+    async load() {
+      return {
+        messages: [
+          {
+            role: "user" as const,
+            content: {
+              type: "text" as const,
+              text:
+                "Help me set up ani-mcp. " +
+                "First, use anilist_whoami to check if I'm already connected. " +
+                "If not authenticated, walk me through these steps:\n" +
+                "1. Find my AniList username at https://anilist.co/settings\n" +
+                "2. Add ANILIST_USERNAME to my MCP server config\n" +
+                "3. (Optional) Create an API token at https://anilist.co/settings/developer for write features\n" +
+                "4. Add ANILIST_TOKEN to my config if I want to update my list\n" +
+                "5. Restart the MCP client to apply changes\n" +
+                "After setup, verify with anilist_whoami and show a quick demo with anilist_taste.",
+            },
+          },
+        ],
+      };
+    },
+  });
+
   // === Find Similar ===
 
   server.addPrompt({

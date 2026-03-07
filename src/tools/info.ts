@@ -135,7 +135,8 @@ export function registerInfoTools(server: FastMCP): void {
     description:
       "Get staff and voice actor credits for an anime or manga. " +
       "Use when the user asks who directed, wrote, or voiced characters in a title. " +
-      "Returns production staff with roles and characters with Japanese voice actors.",
+      "Returns production staff with roles and characters with voice actors. " +
+      "Defaults to Japanese VAs but supports other languages.",
     parameters: StaffInputSchema,
     annotations: {
       title: "Get Staff Credits",
@@ -145,7 +146,9 @@ export function registerInfoTools(server: FastMCP): void {
     },
     execute: async (args) => {
       try {
-        const variables: Record<string, unknown> = {};
+        const variables: Record<string, unknown> = {
+          language: args.language,
+        };
         if (args.id) variables.id = args.id;
         if (args.title) variables.search = args.title;
 
@@ -157,6 +160,8 @@ export function registerInfoTools(server: FastMCP): void {
 
         const m = data.Media;
 
+        const langLabel =
+          args.language !== "JAPANESE" ? ` (${args.language})` : "";
         const lines: string[] = [
           `# Staff: ${getTitle(m.title)}`,
           `Format: ${m.format ?? "Unknown"}`,
@@ -178,7 +183,7 @@ export function registerInfoTools(server: FastMCP): void {
 
         // Characters with voice actors
         if (m.characters.edges.length > 0) {
-          lines.push("## Characters & Voice Actors");
+          lines.push(`## Characters & Voice Actors${langLabel}`);
           for (const edge of m.characters.edges) {
             const charName = edge.node.name.full;
             const role = edge.role;

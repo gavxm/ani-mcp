@@ -26,9 +26,24 @@ Most AniList integrations mirror the API 1:1. ani-mcp adds an intelligence layer
 
 Plus the essentials: search, details, trending, seasonal browsing, list management, social features, and community recommendations. All search and browse tools support pagination for browsing beyond the first page of results.
 
-## Install
+## Try it in 30 seconds
 
-Add to your MCP client config (e.g. `mcp.json`, `claude_desktop_config.json`, Cursor settings, etc.):
+No account needed. Paste this into your MCP client config and start asking about anime:
+
+```json
+{
+  "mcpServers": {
+    "anilist": {
+      "command": "npx",
+      "args": ["-y", "ani-mcp"]
+    }
+  }
+}
+```
+
+This gives you search, trending, seasonal browsing, staff lookup, and more - no env vars required.
+
+To unlock personalized features (recommendations, taste profiling, list management), add your username:
 
 ```json
 {
@@ -43,6 +58,8 @@ Add to your MCP client config (e.g. `mcp.json`, `claude_desktop_config.json`, Cu
   }
 }
 ```
+
+For write operations (updating progress, scoring, list edits), also add `ANILIST_TOKEN`. See [Environment Variables](#environment-variables) for details.
 
 Works with any MCP-compatible client.
 
@@ -80,6 +97,7 @@ Works with any MCP-compatible client.
 | Tool | Description |
 | --- | --- |
 | `anilist_list` | A user's anime/manga list, filtered by status |
+| `anilist_lookup` | Check if a specific title is on a user's list |
 | `anilist_stats` | Watching/reading statistics, top genres, score distribution |
 
 ### Intelligence
@@ -170,6 +188,7 @@ Pre-built conversation starters that clients can offer as quick actions.
 
 | Prompt | Description |
 | --- | --- |
+| `setup` | Walk through connecting your AniList account step by step |
 | `seasonal_review` | Review this season's anime against your taste profile |
 | `what_to_watch` | Plan what to watch now with optional mood and time budget |
 | `roast_my_taste` | Get a humorous roast of your anime taste |

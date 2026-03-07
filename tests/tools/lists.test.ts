@@ -1,9 +1,9 @@
 /** Integration tests for list and stats tools */
 
-import { describe, it, expect, afterAll, afterEach, beforeAll } from "vitest";
+import { describe, it, expect, afterAll, beforeAll } from "vitest";
 import { createTestClient } from "../helpers/server.js";
 import { mswServer } from "../helpers/msw.js";
-import { listHandler, listGroupsHandler, statsHandler } from "../helpers/handlers.js";
+import { listHandler, listGroupsHandler, statsHandler, listLookupHandler } from "../helpers/handlers.js";
 import { makeEntry } from "../fixtures.js";
 
 let callTool: Awaited<ReturnType<typeof createTestClient>>["callTool"];
@@ -417,5 +417,51 @@ describe("anilist_list with CUSTOM status", () => {
     });
 
     expect(result).toContain("no custom");
+  });
+});
+
+// === Single-Entry Lookup ===
+
+describe("anilist_lookup", () => {
+  it("returns entry details when title is on the list", async () => {
+    const entry = makeEntry({
+      id: 42,
+      score: 9,
+      progress: 12,
+      status: "COMPLETED",
+    });
+    mswServer.use(listLookupHandler(entry));
+
+    const result = await callTool("anilist_lookup", {
+      mediaId: 100,
+      username: "testuser",
+    });
+
+    expect(result).toContain("Test Anime");
+    expect(result).toContain("COMPLETED");
+    expect(result).toContain("9/10");
+    expect(result).toContain("12/12 ep");
+    expect(result).toContain("Entry ID: 42");
+  });
+
+  it("shows not-on-list message when entry is missing", async () => {
+    mswServer.use(listLookupHandler(null));
+
+    const result = await callTool("anilist_lookup", {
+      mediaId: 999,
+      username: "testuser",
+    });
+
+    expect(result).toContain("not on testuser's list");
+  });
+
+  it("resolves title to media ID via search", async () => {
+    const result = await callTool("anilist_lookup", {
+      title: "Test Anime",
+      username: "testuser",
+    });
+
+    expect(result).toContain("Test Anime");
+    expect(result).toContain("Status:");
   });
 });

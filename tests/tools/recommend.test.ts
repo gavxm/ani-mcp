@@ -3,7 +3,7 @@
 import { describe, it, expect, afterAll, beforeAll } from "vitest";
 import { createTestClient } from "../helpers/server.js";
 import { mswServer } from "../helpers/msw.js";
-import { listHandler } from "../helpers/handlers.js";
+import { listHandler, completedByDateHandler } from "../helpers/handlers.js";
 import { makeEntry, makeMedia } from "../fixtures.js";
 import { http, HttpResponse } from "msw";
 
@@ -392,7 +392,7 @@ describe("anilist_wrapped", () => {
   }
 
   it("shows year summary with counts and scores", async () => {
-    mswServer.use(listHandler(wrappedEntries()));
+    mswServer.use(completedByDateHandler(wrappedEntries()));
 
     const result = await callTool("anilist_wrapped", {
       username: "testuser",
@@ -407,14 +407,8 @@ describe("anilist_wrapped", () => {
     expect(result).toContain("Top genres this year:");
   });
 
-  it("shows empty message when no titles completed that year", async () => {
-    // Entries completed in a different year
-    const entries = makeScoredEntries(5).map((e) => ({
-      ...e,
-      completedAt: { year: 2020, month: 1, day: 1 },
-      updatedAt: Math.floor(new Date("2020-01-01").getTime() / 1000),
-    }));
-    mswServer.use(listHandler(entries));
+  it("shows empty message when server returns no results", async () => {
+    mswServer.use(completedByDateHandler([]));
 
     const result = await callTool("anilist_wrapped", {
       username: "testuser",
@@ -426,7 +420,6 @@ describe("anilist_wrapped", () => {
   });
 
   it("shows controversial pick when user score differs from community", async () => {
-    // User scores 10, community meanScore is 40 => gap = 60
     const entries = wrappedEntries().map((e, i) => ({
       ...e,
       score: i === 0 ? 10 : 7,
@@ -435,7 +428,7 @@ describe("anilist_wrapped", () => {
         meanScore: i === 0 ? 40 : 70,
       },
     }));
-    mswServer.use(listHandler(entries));
+    mswServer.use(completedByDateHandler(entries));
 
     const result = await callTool("anilist_wrapped", {
       username: "testuser",
@@ -447,34 +440,12 @@ describe("anilist_wrapped", () => {
     expect(result).toContain("above consensus");
   });
 
-  it("falls back to updatedAt when completedAt is missing", async () => {
-    // Unix timestamp for mid-current-year
-    const ts = Math.floor(
-      new Date(`${currentYear}-07-01`).getTime() / 1000,
-    );
-    const entries = makeScoredEntries(5).map((e) => ({
-      ...e,
-      completedAt: { year: null, month: null, day: null },
-      updatedAt: ts,
-    }));
-    mswServer.use(listHandler(entries));
-
-    const result = await callTool("anilist_wrapped", {
-      username: "testuser",
-      type: "ANIME",
-      year: currentYear,
-    });
-
-    expect(result).toContain(`${currentYear} Wrapped for testuser`);
-    expect(result).toContain("5 anime");
-  });
-
   it("skips average score when no entries are scored", async () => {
     const entries = wrappedEntries().map((e) => ({
       ...e,
       score: 0,
     }));
-    mswServer.use(listHandler(entries));
+    mswServer.use(completedByDateHandler(entries));
 
     const result = await callTool("anilist_wrapped", {
       username: "testuser",
@@ -487,30 +458,13 @@ describe("anilist_wrapped", () => {
     expect(result).not.toContain("Highest rated:");
   });
 
-  it("excludes entries with no completedAt and no updatedAt", async () => {
-    const entries = makeScoredEntries(5).map((e) => ({
-      ...e,
-      completedAt: { year: null, month: null, day: null },
-      updatedAt: 0,
-    }));
-    mswServer.use(listHandler(entries));
-
-    const result = await callTool("anilist_wrapped", {
-      username: "testuser",
-      type: "ANIME",
-      year: currentYear,
-    });
-
-    expect(result).toContain("didn't complete any titles");
-  });
-
   it("shows chapters read for manga wrapped", async () => {
     const entries = wrappedEntries().map((e) => ({
       ...e,
       progress: 30,
       media: { ...e.media, type: "MANGA" as const },
     }));
-    mswServer.use(listHandler(entries));
+    mswServer.use(completedByDateHandler(entries));
 
     const result = await callTool("anilist_wrapped", {
       username: "testuser",
@@ -529,7 +483,7 @@ describe("anilist_wrapped", () => {
       progress: 24,
       media: { ...e.media, episodes: 12 },
     }));
-    mswServer.use(listHandler(entries));
+    mswServer.use(completedByDateHandler(entries));
 
     const result = await callTool("anilist_wrapped", {
       username: "testuser",

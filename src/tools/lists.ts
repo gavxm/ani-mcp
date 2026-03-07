@@ -2,13 +2,23 @@
 
 import type { FastMCP } from "fastmcp";
 import { anilistClient } from "../api/client.js";
-import { USER_STATS_QUERY } from "../api/queries.js";
-import { ListInputSchema, StatsInputSchema } from "../schemas.js";
+import {
+  USER_STATS_QUERY,
+  LIST_LOOKUP_QUERY,
+  SEARCH_MEDIA_QUERY,
+} from "../api/queries.js";
+import {
+  ListInputSchema,
+  StatsInputSchema,
+  LookupInputSchema,
+} from "../schemas.js";
 import type {
   AniListMediaListEntry,
   UserStatsResponse,
   MediaTypeStats,
   ScoreFormat,
+  ListLookupResponse,
+  SearchMediaResponse,
 } from "../types.js";
 import {
   getTitle,
@@ -17,6 +27,7 @@ import {
   paginationFooter,
   formatScore,
   getScoreFormat,
+  resolveAlias,
 } from "../utils.js";
 
 // Map user-friendly sort names to AniList's internal enum values
@@ -150,6 +161,104 @@ export function registerListTools(server: FastMCP): void {
         return lines.join("\n");
       } catch (error) {
         return throwToolError(error, "fetching stats");
+      }
+    },
+  });
+
+  // === Single-Entry Lookup ===
+
+  server.addTool({
+    name: "anilist_lookup",
+    description:
+      "Check if a specific title is on a user's list and show its status. " +
+      'Use when the user asks "is this on my list?", "have I seen this?", ' +
+      "or wants to check their progress or score for a single title. " +
+      "Returns status, score, progress, and dates without fetching the full list.",
+    parameters: LookupInputSchema,
+    annotations: {
+      title: "List Lookup",
+      readOnlyHint: true,
+      destructiveHint: false,
+      openWorldHint: true,
+    },
+    execute: async (args) => {
+      try {
+        const username = getDefaultUsername(args.username);
+
+        // Resolve title to media ID
+        let mediaId = args.mediaId;
+        let resolvedTitle: string | undefined;
+        if (!mediaId && args.title) {
+          const search = resolveAlias(args.title);
+          const searchData = await anilistClient.query<SearchMediaResponse>(
+            SEARCH_MEDIA_QUERY,
+            { search, type: "ANIME", page: 1, perPage: 1 },
+            { cache: "search" },
+          );
+          if (!searchData.Page.media.length) {
+            return `No results found for "${args.title}".`;
+          }
+          mediaId = searchData.Page.media[0].id;
+          resolvedTitle = getTitle(searchData.Page.media[0].title);
+        }
+
+        const data = await anilistClient.query<ListLookupResponse>(
+          LIST_LOOKUP_QUERY,
+          { mediaId, userName: username },
+          { cache: "list" },
+        );
+
+        if (!data.MediaList) {
+          const label = resolvedTitle ?? args.title ?? `ID ${mediaId}`;
+          return `"${label}" is not on ${username}'s list.`;
+        }
+
+        const entry = data.MediaList;
+        const title = getTitle(entry.media.title);
+        const scoreFormat = await getScoreFormat(username);
+        const score = formatScore(entry.score, scoreFormat);
+
+        // Progress string
+        const total = entry.media.episodes ?? entry.media.chapters ?? "?";
+        const unit = entry.media.episodes !== null ? "ep" : "ch";
+        let progress = `${entry.progress}/${total} ${unit}`;
+        if (entry.progressVolumes > 0) {
+          const totalVol = entry.media.volumes ?? "?";
+          progress += `, ${entry.progressVolumes}/${totalVol} vol`;
+        }
+
+        const lines = [
+          `# ${title} (${entry.media.format ?? "?"})`,
+          `Status: ${entry.status}`,
+          `Score: ${score}`,
+          `Progress: ${progress}`,
+        ];
+
+        // Dates
+        if (entry.startedAt?.year) {
+          const s = entry.startedAt;
+          lines.push(
+            `Started: ${s.year}-${String(s.month ?? 1).padStart(2, "0")}-${String(s.day ?? 1).padStart(2, "0")}`,
+          );
+        }
+        if (entry.completedAt?.year) {
+          const c = entry.completedAt;
+          lines.push(
+            `Completed: ${c.year}-${String(c.month ?? 1).padStart(2, "0")}-${String(c.day ?? 1).padStart(2, "0")}`,
+          );
+        }
+
+        if (entry.notes) {
+          lines.push(
+            `Notes: ${entry.notes.slice(0, 200)}${entry.notes.length > 200 ? "..." : ""}`,
+          );
+        }
+
+        lines.push(`Entry ID: ${entry.id}`);
+
+        return lines.join("\n");
+      } catch (error) {
+        return throwToolError(error, "looking up list entry");
       }
     },
   });

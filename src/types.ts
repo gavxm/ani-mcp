@@ -194,6 +194,7 @@ export interface StaffResponse {
         voiceActors: Array<{
           id: number;
           name: { full: string; native: string | null };
+          language: string;
           siteUrl: string;
         }>;
       }>;
@@ -293,6 +294,19 @@ export interface MediaListEntryResponse {
     notes: string | null;
     private: boolean;
   } | null;
+}
+
+/** Response from single-entry lookup with full media details */
+export interface ListLookupResponse {
+  MediaList: AniListMediaListEntry | null;
+}
+
+/** Response from paginated completed-by-date query */
+export interface CompletedByDateResponse {
+  Page: {
+    pageInfo: { hasNextPage: boolean };
+    mediaList: AniListMediaListEntry[];
+  };
 }
 
 /** Response from saving a list entry */

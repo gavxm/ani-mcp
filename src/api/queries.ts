@@ -289,7 +289,7 @@ export const GENRE_BROWSE_QUERY = `
 
 /** Staff and voice actors for a media title */
 export const STAFF_QUERY = `
-  query MediaStaff($id: Int, $search: String) {
+  query MediaStaff($id: Int, $search: String, $language: StaffLanguage) {
     Media(id: $id, search: $search) {
       id
       title { romaji english native }
@@ -313,9 +313,10 @@ export const STAFF_QUERY = `
             name { full native }
             siteUrl
           }
-          voiceActors(language: JAPANESE) {
+          voiceActors(language: $language) {
             id
             name { full native }
+            language
             siteUrl
           }
         }
@@ -448,6 +449,27 @@ export const MEDIA_LIST_ENTRY_QUERY = `
   }
 `;
 
+/** Fetch a single list entry with full media details */
+export const LIST_LOOKUP_QUERY = `
+  query ListLookup($mediaId: Int!, $userName: String!) {
+    MediaList(mediaId: $mediaId, userName: $userName) {
+      id
+      status
+      score(format: POINT_10)
+      progress
+      progressVolumes
+      updatedAt
+      startedAt { year month day }
+      completedAt { year month day }
+      notes
+      media {
+        ...MediaFields
+      }
+    }
+  }
+  ${MEDIA_FRAGMENT}
+`;
+
 /** Remove a list entry */
 export const DELETE_MEDIA_LIST_ENTRY_MUTATION = `
   mutation DeleteMediaListEntry($id: Int!) {
@@ -488,6 +510,44 @@ export const USER_LIST_QUERY = `
           media {
             ...MediaFields
           }
+        }
+      }
+    }
+  }
+  ${MEDIA_FRAGMENT}
+`;
+
+/** Completed list entries filtered by date range (server-side) */
+export const COMPLETED_BY_DATE_QUERY = `
+  query CompletedByDate(
+    $userName: String!
+    $type: MediaType
+    $completedAfter: FuzzyDateInt
+    $completedBefore: FuzzyDateInt
+    $page: Int
+    $perPage: Int
+  ) {
+    Page(page: $page, perPage: $perPage) {
+      pageInfo { hasNextPage }
+      mediaList(
+        userName: $userName
+        type: $type
+        status: COMPLETED
+        completedAt_greater: $completedAfter
+        completedAt_lesser: $completedBefore
+        sort: FINISHED_ON_DESC
+      ) {
+        id
+        score(format: POINT_10)
+        progress
+        progressVolumes
+        status
+        updatedAt
+        startedAt { year month day }
+        completedAt { year month day }
+        notes
+        media {
+          ...MediaFields
         }
       }
     }

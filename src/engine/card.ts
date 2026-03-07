@@ -227,12 +227,7 @@ export function buildCompatCardSvg(data: CompatCardData): string {
 
     // Divergences
     sectionLabel("Key Differences", 430, 420),
-    ...divergenceList(
-      data.divergences.slice(0, 3),
-      430,
-      442,
-      data.user1,
-    ),
+    ...divergenceList(data.divergences.slice(0, 3), 430, 442, data.user1),
 
     // Watermark
     watermark(CARD_WIDTH, CARD_HEIGHT),

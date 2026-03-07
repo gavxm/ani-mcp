@@ -138,6 +138,37 @@ export const defaultHandlers = [
       });
     }
 
+    // Single-entry list lookup
+    if (matchQuery(body, "ListLookup")) {
+      const entry = defaultEntries[0];
+      return gql({
+        MediaList: entry
+          ? {
+              id: entry.id,
+              status: entry.status,
+              score: entry.score,
+              progress: entry.progress,
+              progressVolumes: entry.progressVolumes,
+              updatedAt: entry.updatedAt,
+              startedAt: entry.startedAt,
+              completedAt: entry.completedAt,
+              notes: entry.notes,
+              media: entry.media,
+            }
+          : null,
+      });
+    }
+
+    // Completed-by-date (wrapped tool)
+    if (matchQuery(body, "CompletedByDate")) {
+      return gql({
+        Page: {
+          pageInfo: { hasNextPage: false },
+          mediaList: defaultEntries,
+        },
+      });
+    }
+
     // User list
     if (matchQuery(body, "MediaListCollection")) {
       return gql({
@@ -282,7 +313,7 @@ export const defaultHandlers = [
                 role: "MAIN",
                 node: { id: 20, name: { full: "Hero", native: "ヒーロー" }, siteUrl: "https://anilist.co/character/20" },
                 voiceActors: [
-                  { id: 30, name: { full: "Hanako Suzuki", native: "鈴木花子" }, siteUrl: "https://anilist.co/staff/30" },
+                  { id: 30, name: { full: "Hanako Suzuki", native: "鈴木花子" }, language: "JAPANESE", siteUrl: "https://anilist.co/staff/30" },
                 ],
               },
             ],
@@ -729,6 +760,33 @@ export function listHandler(
         lists: entries.length
           ? [{ name: status, status, entries }]
           : [],
+      },
+    });
+  });
+}
+
+/** Override single-entry list lookup */
+export function listLookupHandler(
+  entry: ReturnType<typeof makeEntry> | null,
+) {
+  return http.post(ANILIST_URL, async ({ request }) => {
+    const body = (await request.clone().json()) as { query?: string };
+    if (!matchQuery(body, "ListLookup")) return undefined;
+    return gql({ MediaList: entry });
+  });
+}
+
+/** Override completed-by-date to return specific entries */
+export function completedByDateHandler(
+  entries: ReturnType<typeof makeEntry>[],
+) {
+  return http.post(ANILIST_URL, async ({ request }) => {
+    const body = (await request.clone().json()) as { query?: string };
+    if (!matchQuery(body, "CompletedByDate")) return undefined;
+    return gql({
+      Page: {
+        pageInfo: { hasNextPage: false },
+        mediaList: entries,
       },
     });
   });

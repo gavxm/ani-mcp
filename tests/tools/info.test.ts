@@ -64,6 +64,44 @@ describe("anilist_staff", () => {
     expect(result).not.toContain("Production Staff");
     expect(result).not.toContain("Characters & Voice Actors");
   });
+
+  it("shows language label for non-Japanese VAs", async () => {
+    mswServer.use(
+      staffHandler({
+        id: 1,
+        title: { romaji: "Test Anime", english: "Test Anime", native: null },
+        format: "TV",
+        siteUrl: "https://anilist.co/anime/1",
+        staff: { edges: [] },
+        characters: {
+          edges: [
+            {
+              role: "MAIN",
+              node: { id: 20, name: { full: "Hero", native: null }, siteUrl: "https://anilist.co/character/20" },
+              voiceActors: [
+                { id: 31, name: { full: "John Smith", native: null }, language: "ENGLISH", siteUrl: "https://anilist.co/staff/31" },
+              ],
+            },
+          ],
+        },
+      }),
+    );
+
+    const result = await callTool("anilist_staff", {
+      title: "Test Anime",
+      language: "ENGLISH",
+    });
+
+    expect(result).toContain("ENGLISH");
+    expect(result).toContain("John Smith");
+  });
+
+  it("defaults to JAPANESE without language label", async () => {
+    const result = await callTool("anilist_staff", { title: "Test Anime" });
+
+    expect(result).toContain("Characters & Voice Actors");
+    expect(result).not.toContain("JAPANESE");
+  });
 });
 
 describe("anilist_schedule", () => {

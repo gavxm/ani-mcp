@@ -139,6 +139,28 @@ export const ListInputSchema = z.object({
 
 export type ListInput = z.infer<typeof ListInputSchema>;
 
+/** Input for looking up a single entry on a user's list */
+export const LookupInputSchema = z
+  .object({
+    mediaId: z
+      .number()
+      .int()
+      .positive()
+      .optional()
+      .describe("AniList media ID to look up"),
+    title: z.string().optional().describe("Search by title if no ID is known"),
+    username: usernameSchema
+      .optional()
+      .describe(
+        "AniList username. Falls back to configured default if not provided.",
+      ),
+  })
+  .refine((data) => data.mediaId !== undefined || data.title !== undefined, {
+    message: "Provide either a mediaId or a title.",
+  });
+
+export type LookupInput = z.infer<typeof LookupInputSchema>;
+
 /** Input for generating a taste profile summary */
 export const TasteInputSchema = z.object({
   username: usernameSchema
@@ -448,6 +470,21 @@ export const StaffInputSchema = z
   .object({
     id: z.number().int().positive().optional().describe("AniList media ID"),
     title: z.string().optional().describe("Search by title if no ID is known"),
+    language: z
+      .enum([
+        "JAPANESE",
+        "ENGLISH",
+        "KOREAN",
+        "ITALIAN",
+        "SPANISH",
+        "PORTUGUESE",
+        "FRENCH",
+        "GERMAN",
+        "HEBREW",
+        "HUNGARIAN",
+      ])
+      .default("JAPANESE")
+      .describe("Voice actor language (default JAPANESE)"),
   })
   .refine((data) => data.id !== undefined || data.title !== undefined, {
     message: "Provide either an id or a title.",

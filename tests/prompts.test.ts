@@ -122,3 +122,14 @@ describe("find_similar", () => {
     expect(result).toContain("Steins;Gate");
   });
 });
+
+// === setup ===
+
+describe("setup", () => {
+  it("returns prompt referencing anilist_whoami", async () => {
+    const result = await getPrompt("setup");
+    expect(result).toContain("anilist_whoami");
+    expect(result).toContain("ANILIST_USERNAME");
+    expect(result).toContain("ANILIST_TOKEN");
+  });
+});
