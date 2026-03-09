@@ -474,6 +474,10 @@ export const StaffInputSchema = z
   .object({
     id: z.number().int().positive().optional().describe("AniList media ID"),
     title: z.string().optional().describe("Search by title if no ID is known"),
+    type: z
+      .enum(["ANIME", "MANGA"])
+      .default("ANIME")
+      .describe("Media type. Defaults to ANIME."),
     language: z
       .enum([
         "JAPANESE",
