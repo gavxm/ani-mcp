@@ -751,10 +751,18 @@ export function registerRecommendTools(server: FastMCP): void {
     execute: async (args) => {
       try {
         // Fetch both users' completed lists in parallel
-        const [entries1, entries2] = await Promise.all([
+        const [result1, result2] = await Promise.allSettled([
           anilistClient.fetchList(args.user1, args.type, "COMPLETED"),
           anilistClient.fetchList(args.user2, args.type, "COMPLETED"),
         ]);
+        const failed: string[] = [];
+        if (result1.status === "rejected")
+          failed.push(`User "${args.user1}" not found on AniList.`);
+        if (result2.status === "rejected")
+          failed.push(`User "${args.user2}" not found on AniList.`);
+        if (failed.length > 0) return failed.join(" ");
+        const entries1 = result1.status === "fulfilled" ? result1.value : [];
+        const entries2 = result2.status === "fulfilled" ? result2.value : [];
 
         if (entries1.length === 0) {
           return `${args.user1} has no completed ${args.type.toLowerCase()}.`;
