@@ -5,6 +5,7 @@ import { makeMedia, makeEntry } from "../fixtures.js";
 
 const ANILIST_URL = "https://graphql.anilist.co";
 const JIKAN_BASE = "https://api.jikan.moe/v4";
+const KITSU_BASE = "https://kitsu.io/api/edge";
 
 // === Response Factories ===
 
@@ -753,6 +754,47 @@ export const defaultHandlers = [
       pagination: { last_visible_page: 1, has_next_page: false },
     });
   }),
+
+  // Kitsu user lookup
+  http.get(`${KITSU_BASE}/users`, () => {
+    return HttpResponse.json({
+      data: [{ id: "42", type: "users", attributes: { name: "testuser" } }],
+      meta: { count: 1 },
+    });
+  }),
+
+  // Kitsu library entries - 6 entries with included anime
+  http.get(`${KITSU_BASE}/library-entries`, () => {
+    const entries = Array.from({ length: 6 }, (_, i) => ({
+      id: String(200 + i),
+      type: "libraryEntries",
+      attributes: {
+        status: "completed",
+        ratingTwenty: 12 + (i % 8),
+        progress: 12 + i,
+      },
+      relationships: {
+        anime: { data: { type: "anime", id: String(300 + i) } },
+      },
+    }));
+
+    const included = Array.from({ length: 6 }, (_, i) => ({
+      id: String(300 + i),
+      type: "anime",
+      attributes: {
+        canonicalTitle: `Kitsu Anime ${i + 1}`,
+        episodeCount: 12 + i,
+        averageRating: String(70 + i * 2),
+        subtype: "TV",
+      },
+    }));
+
+    return HttpResponse.json({
+      data: entries,
+      included,
+      meta: { count: 6 },
+    });
+  }),
 ];
 
 // === Per-test Handler Overrides ===
@@ -1253,5 +1295,34 @@ export function activityReplyHandler(reply: Record<string, unknown>) {
     const body = (await request.clone().json()) as { query?: string };
     if (!matchQuery(body, "SaveActivityReply")) return undefined;
     return gql({ SaveActivityReply: reply });
+  });
+}
+
+/** Override Kitsu user lookup to return specific user or 404 */
+export function kitsuUserHandler(
+  user: { id: string; name: string } | null,
+) {
+  return http.get(`${KITSU_BASE}/users`, () => {
+    if (!user) {
+      return HttpResponse.json({ data: [], meta: { count: 0 } });
+    }
+    return HttpResponse.json({
+      data: [{ id: user.id, type: "users", attributes: { name: user.name } }],
+      meta: { count: 1 },
+    });
+  });
+}
+
+/** Override Kitsu library entries */
+export function kitsuListHandler(
+  entries: Array<Record<string, unknown>>,
+  included: Array<Record<string, unknown>> = [],
+) {
+  return http.get(`${KITSU_BASE}/library-entries`, () => {
+    return HttpResponse.json({
+      data: entries,
+      included,
+      meta: { count: entries.length },
+    });
   });
 }

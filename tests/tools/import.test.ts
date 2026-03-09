@@ -1,9 +1,14 @@
-/** Integration tests for MAL import tool */
+/** Integration tests for MAL and Kitsu import tools */
 
 import { describe, it, expect, afterAll, beforeAll } from "vitest";
 import { createTestClient } from "../helpers/server.js";
 import { mswServer } from "../helpers/msw.js";
-import { jikanListHandler, jikanNotFoundHandler } from "../helpers/handlers.js";
+import {
+  jikanListHandler,
+  jikanNotFoundHandler,
+  kitsuUserHandler,
+  kitsuListHandler,
+} from "../helpers/handlers.js";
 
 let callTool: Awaited<ReturnType<typeof createTestClient>>["callTool"];
 let cleanup: Awaited<ReturnType<typeof createTestClient>>["cleanup"];
@@ -95,5 +100,79 @@ describe("anilist_mal_import", () => {
     });
 
     expect(result).toContain("Recommendations");
+  });
+});
+
+// === anilist_kitsu_import ===
+
+describe("anilist_kitsu_import", () => {
+  it("imports Kitsu list and returns taste profile", async () => {
+    const result = await callTool("anilist_kitsu_import", {
+      kitsuUsername: "testuser",
+    });
+
+    expect(result).toContain("Kitsu Import: testuser");
+    expect(result).toContain("Imported 6 completed anime");
+    expect(result).toContain("Taste Profile");
+  });
+
+  it("shows message for empty Kitsu list", async () => {
+    mswServer.use(kitsuListHandler([]));
+
+    const result = await callTool("anilist_kitsu_import", {
+      kitsuUsername: "emptyuser",
+    });
+
+    expect(result).toContain('No completed anime found for Kitsu user "emptyuser"');
+  });
+
+  it("handles Kitsu user not found", async () => {
+    mswServer.use(kitsuUserHandler(null));
+
+    const result = await callTool("anilist_kitsu_import", {
+      kitsuUsername: "noone",
+    });
+
+    expect(result).toContain("not found");
+  });
+
+  it("filters out unrated entries", async () => {
+    mswServer.use(
+      kitsuListHandler(
+        [
+          {
+            id: "500",
+            type: "libraryEntries",
+            attributes: { status: "completed", ratingTwenty: null, progress: 12 },
+            relationships: { anime: { data: { type: "anime", id: "600" } } },
+          },
+          {
+            id: "501",
+            type: "libraryEntries",
+            attributes: { status: "completed", ratingTwenty: 16, progress: 24 },
+            relationships: { anime: { data: { type: "anime", id: "601" } } },
+          },
+        ],
+        [
+          {
+            id: "600",
+            type: "anime",
+            attributes: { canonicalTitle: "Unrated Show", episodeCount: 12, averageRating: "70", subtype: "TV" },
+          },
+          {
+            id: "601",
+            type: "anime",
+            attributes: { canonicalTitle: "Rated Show", episodeCount: 24, averageRating: "80", subtype: "TV" },
+          },
+        ],
+      ),
+    );
+
+    const result = await callTool("anilist_kitsu_import", {
+      kitsuUsername: "partialuser",
+    });
+
+    expect(result).toContain("Imported 2 completed anime");
+    expect(result).toContain("Taste Profile");
   });
 });

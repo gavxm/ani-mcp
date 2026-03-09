@@ -114,6 +114,7 @@ Works with any MCP-compatible client.
 | `anilist_watch_order` | Viewing order for a franchise |
 | `anilist_session` | Plan a viewing session within a time budget |
 | `anilist_mal_import` | Import a MyAnimeList user's list and generate recommendations |
+| `anilist_kitsu_import` | Import a Kitsu user's list and generate recommendations |
 
 ### Cards
 

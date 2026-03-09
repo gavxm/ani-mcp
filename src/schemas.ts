@@ -545,6 +545,24 @@ export const MalImportInputSchema = z.object({
 
 export type MalImportInput = z.infer<typeof MalImportInputSchema>;
 
+/** Input for importing a Kitsu user's completed list */
+export const KitsuImportInputSchema = z.object({
+  kitsuUsername: z
+    .string()
+    .min(2)
+    .max(30)
+    .describe("Kitsu username to import"),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(15)
+    .default(5)
+    .describe("Number of recommendations to return (default 5, max 15)"),
+});
+
+export type KitsuImportInput = z.infer<typeof KitsuImportInputSchema>;
+
 /** Input for character search */
 export const CharacterSearchInputSchema = z.object({
   query: z
