@@ -2,6 +2,12 @@
 
 All notable changes to ani-mcp are documented here.
 
+## 0.13.0
+
+- Add `anilist://status` resource - health check with API connectivity, auth status, and cache state
+- Add `anilist_kitsu_import` - import a Kitsu user's completed list and generate recommendations
+- Add integration smoke test against real AniList API (behind `ANILIST_SMOKE_TEST=1` flag)
+
 ## 0.12.0
 
 - Add `anilist_group_pick` - find anime/manga for a group to watch together (intersection of planning lists)
