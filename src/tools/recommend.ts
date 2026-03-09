@@ -8,6 +8,7 @@ import {
   DISCOVER_MEDIA_QUERY,
   MEDIA_DETAILS_QUERY,
   RECOMMENDATIONS_QUERY,
+  SEARCH_MEDIA_QUERY,
   SEASONAL_MEDIA_QUERY,
 } from "../api/queries.js";
 import {
@@ -38,7 +39,7 @@ import {
   resolveSeasonYear,
   resolveAlias,
 } from "../utils.js";
-import { SEARCH_MEDIA_QUERY } from "../api/queries.js";
+
 import {
   buildTasteProfile,
   describeTasteProfile,
