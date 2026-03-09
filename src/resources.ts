@@ -118,6 +118,54 @@ export function registerResources(server: FastMCP): void {
       }
     },
   });
+
+  // === Health Check ===
+
+  server.addResource({
+    uri: "anilist://status",
+    name: "Server Status",
+    description:
+      "Health check showing API connectivity, auth status, cache state, and server version.",
+    mimeType: "text/plain",
+    async load() {
+      const lines: string[] = ["# ani-mcp Status", ""];
+
+      // Server version
+      lines.push(`Version: 0.13.0`);
+
+      // Auth status
+      const hasToken = Boolean(process.env.ANILIST_TOKEN);
+      const hasUsername = Boolean(process.env.ANILIST_USERNAME);
+      lines.push(
+        `Auth: ${hasToken ? "token configured" : "no token (read-only mode)"}`,
+      );
+      lines.push(
+        `Username: ${hasUsername ? process.env.ANILIST_USERNAME : "not configured"}`,
+      );
+
+      // API connectivity
+      try {
+        const start = Date.now();
+        await anilistClient.query(
+          "query Ping { Viewer { id } }",
+          {},
+          { cache: null },
+        );
+        const latency = Date.now() - start;
+        lines.push(`API: connected (${latency}ms)`);
+      } catch {
+        lines.push("API: unreachable");
+      }
+
+      // Cache stats
+      const cacheStats = anilistClient.cacheStats();
+      lines.push(
+        `Cache: ${cacheStats.size}/${cacheStats.maxSize} entries`,
+      );
+
+      return { text: lines.join("\n") };
+    },
+  });
 }
 
 // === Formatting Helpers ===

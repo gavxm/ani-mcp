@@ -176,6 +176,11 @@ class AniListClient {
     queryCache.clear();
   }
 
+  /** Cache size and capacity for health checks */
+  cacheStats(): { size: number; maxSize: number } {
+    return { size: queryCache.size, maxSize: 500 };
+  }
+
   /** Evict cache entries related to a specific user (lists and stats) */
   invalidateUser(username: string): void {
     const needle = `"${username}"`;

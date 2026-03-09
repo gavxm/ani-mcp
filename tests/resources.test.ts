@@ -136,3 +136,32 @@ describe("anilist://list/{type}", () => {
     expect(result).toContain("current manga");
   });
 });
+
+// === anilist://status ===
+
+describe("anilist://status", () => {
+  it("returns server status with version and cache info", async () => {
+    const result = await readResource("anilist://status");
+    expect(result).toContain("ani-mcp Status");
+    expect(result).toContain("Version:");
+    expect(result).toContain("Cache:");
+  });
+
+  it("shows auth status when token is set", async () => {
+    process.env.ANILIST_TOKEN = "test-token";
+    const result = await readResource("anilist://status");
+    expect(result).toContain("token configured");
+    delete process.env.ANILIST_TOKEN;
+  });
+
+  it("shows no token when not set", async () => {
+    delete process.env.ANILIST_TOKEN;
+    const result = await readResource("anilist://status");
+    expect(result).toContain("no token");
+  });
+
+  it("shows configured username", async () => {
+    const result = await readResource("anilist://status");
+    expect(result).toContain("testuser");
+  });
+});
