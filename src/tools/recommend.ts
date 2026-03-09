@@ -649,7 +649,7 @@ export function registerRecommendTools(server: FastMCP): void {
         } else {
           const data = await anilistClient.query<MediaDetailsResponse>(
             MEDIA_DETAILS_QUERY,
-            { search: args.title },
+            { search: args.title, type: "ANIME" },
             { cache: "media" },
           );
           mediaId = data.Media.id;
@@ -673,9 +673,12 @@ export function registerRecommendTools(server: FastMCP): void {
             if (relationsMap.has(media.id)) continue;
             relationsMap.set(media.id, media);
 
-            // Collect newly discovered IDs
+            // Only follow anime relations to stay within the anime franchise
             for (const edge of media.relations.edges) {
-              if (!relationsMap.has(edge.node.id)) {
+              if (
+                !relationsMap.has(edge.node.id) &&
+                edge.node.type === "ANIME"
+              ) {
                 nextFrontier.push(edge.node.id);
               }
             }
@@ -1066,9 +1069,10 @@ export function registerRecommendTools(server: FastMCP): void {
         let mediaId = args.mediaId;
         if (!mediaId && args.title) {
           const search = resolveAlias(args.title);
+          const searchType = args.type === "MANGA" ? "MANGA" : "ANIME";
           const searchData = await anilistClient.query<SearchMediaResponse>(
             SEARCH_MEDIA_QUERY,
-            { search, type: "ANIME", page: 1, perPage: 1 },
+            { search, type: searchType, page: 1, perPage: 1 },
             { cache: "search" },
           );
           if (!searchData.Page.media.length) {
@@ -1201,7 +1205,7 @@ export function registerRecommendTools(server: FastMCP): void {
           const search = resolveAlias(args.title);
           const searchData = await anilistClient.query<SearchMediaResponse>(
             SEARCH_MEDIA_QUERY,
-            { search, type: "ANIME", page: 1, perPage: 1 },
+            { search, type: args.type, page: 1, perPage: 1 },
             { cache: "search" },
           );
           if (!searchData.Page.media.length) {
