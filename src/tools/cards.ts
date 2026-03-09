@@ -46,11 +46,12 @@ export function registerCardTools(server: FastMCP): void {
     },
     execute: async (args) => {
       const username = args.username ?? getDefaultUsername();
-      const entries = await anilistClient.fetchList(
-        username,
-        args.type,
-        "COMPLETED",
-      );
+
+      // Fetch list and avatar in parallel
+      const [entries, avatarUrl] = await Promise.all([
+        anilistClient.fetchList(username, args.type, "COMPLETED"),
+        getAvatarUrl(username),
+      ]);
 
       if (entries.length === 0) {
         return `${username} has no completed ${args.type.toLowerCase()}.`;
@@ -72,8 +73,6 @@ export function registerCardTools(server: FastMCP): void {
         );
       }
 
-      // Fetch avatar in parallel with nothing else, but keep it non-blocking
-      const avatarUrl = await getAvatarUrl(username);
       const avatarB64 = avatarUrl ? await fetchAvatarB64(avatarUrl) : null;
 
       const svg = buildTasteCardSvg(username, profile, avatarB64);

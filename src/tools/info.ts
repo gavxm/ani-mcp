@@ -316,17 +316,21 @@ export function registerInfoTools(server: FastMCP): void {
         // Extract media IDs for batch airing lookup
         const mediaIds = entries.map((e) => e.media.id);
 
-        // Batch-fetch airing info (50 per page max)
-        const airingMedia: BatchAiringResponse["Page"]["media"] = [];
+        // Batch-fetch airing info in parallel (50 per page max)
+        const batches: number[][] = [];
         for (let i = 0; i < mediaIds.length; i += 50) {
-          const batch = mediaIds.slice(i, i + 50);
-          const data = await anilistClient.query<BatchAiringResponse>(
-            BATCH_AIRING_QUERY,
-            { ids: batch, perPage: 50 },
-            { cache: "schedule" },
-          );
-          airingMedia.push(...data.Page.media);
+          batches.push(mediaIds.slice(i, i + 50));
         }
+        const airingResults = await Promise.all(
+          batches.map((batch) =>
+            anilistClient.query<BatchAiringResponse>(
+              BATCH_AIRING_QUERY,
+              { ids: batch, perPage: 50 },
+              { cache: "schedule" },
+            ),
+          ),
+        );
+        const airingMedia = airingResults.flatMap((d) => d.Page.media);
 
         // Map media ID to user progress
         const progressMap = new Map(

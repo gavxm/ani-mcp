@@ -282,15 +282,21 @@ export function registerAnalyticsTools(server: FastMCP): void {
         const maxRounds = 3;
 
         for (let round = 0; round < maxRounds && frontier.length > 0; round++) {
-          // Process in chunks of 50
+          // Fetch all chunks in parallel (rate limiter queues excess)
+          const chunks: number[][] = [];
           for (let i = 0; i < frontier.length; i += 50) {
-            const chunk = frontier.slice(i, i + 50);
-            const data = await anilistClient.query<BatchRelationsResponse>(
-              BATCH_RELATIONS_QUERY,
-              { ids: chunk },
-              { cache: "media" },
-            );
-
+            chunks.push(frontier.slice(i, i + 50));
+          }
+          const results = await Promise.all(
+            chunks.map((chunk) =>
+              anilistClient.query<BatchRelationsResponse>(
+                BATCH_RELATIONS_QUERY,
+                { ids: chunk },
+                { cache: "media" },
+              ),
+            ),
+          );
+          for (const data of results) {
             for (const media of data.Page.media) {
               if (!relationsMap.has(media.id)) {
                 relationsMap.set(media.id, media as RelationNode);

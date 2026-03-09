@@ -911,9 +911,9 @@ export function registerRecommendTools(server: FastMCP): void {
         const completedAfter = year * 10000 + 100 + 1; // Jan 1
         const completedBefore = year * 10000 + 1231; // Dec 31
 
-        // Paginate through results
-        const yearEntries: AniListMediaListEntry[] = [];
-        for (const type of types) {
+        // Paginate through results (types fetched in parallel)
+        async function fetchType(type: "ANIME" | "MANGA") {
+          const results: AniListMediaListEntry[] = [];
           let page = 1;
           let hasNext = true;
           while (hasNext) {
@@ -929,11 +929,15 @@ export function registerRecommendTools(server: FastMCP): void {
               },
               { cache: "list" },
             );
-            yearEntries.push(...data.Page.mediaList);
+            results.push(...data.Page.mediaList);
             hasNext = data.Page.pageInfo.hasNextPage;
             page++;
           }
+          return results;
         }
+        const yearEntries = (
+          await Promise.all(types.map(fetchType))
+        ).flat();
 
         if (yearEntries.length === 0) {
           return `${username} didn't complete any titles in ${year}.`;
