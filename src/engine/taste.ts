@@ -187,7 +187,7 @@ function computeTagWeights(
     }
   }
 
-  // Filter out tags with too few appearances to be meaningful
+  // Filter noise (1-2 entries are never meaningful)
   for (const [name, { count }] of tagMap) {
     if (count < MIN_TAG_COUNT) tagMap.delete(name);
   }
@@ -266,19 +266,18 @@ function computeFormatBreakdown(
 
 // === Helpers ===
 
-/** Convert a name->weight Map into a Bayesian-smoothed sorted array */
+/** Convert a name->weight Map into a frequency-adjusted sorted array */
 function mapToSortedItems(
   map: Map<string, { weight: number; count: number }>,
 ): WeightedItem[] {
   return [...map.entries()]
-    .map(([name, { weight, count }]) => ({
-      name,
-      // Pull sparse observations toward a neutral prior
-      weight:
+    .map(([name, { weight, count }]) => {
+      // Bayesian average (quality) scaled by log frequency (prominence)
+      const avg =
         (weight + BAYESIAN_PRIOR_WEIGHT * BAYESIAN_PRIOR_COUNT) /
-        (count + BAYESIAN_PRIOR_COUNT),
-      count,
-    }))
+        (count + BAYESIAN_PRIOR_COUNT);
+      return { name, weight: avg * Math.log2(count + 1), count };
+    })
     .sort((a, b) => b.weight - a.weight);
 }
 
