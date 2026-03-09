@@ -405,11 +405,21 @@ export function registerInfoTools(server: FastMCP): void {
     },
     execute: async (args) => {
       try {
-        const data = await anilistClient.query<CharacterSearchResponse>(
+        let data = await anilistClient.query<CharacterSearchResponse>(
           CHARACTER_SEARCH_QUERY,
           { search: args.query, page: args.page, perPage: args.limit },
           { cache: "search" },
         );
+
+        // AniList struggles with multi-word names; retry with last word
+        if (!data.Page.characters.length && args.query.includes(" ")) {
+          const last = args.query.split(" ").pop() ?? args.query;
+          data = await anilistClient.query<CharacterSearchResponse>(
+            CHARACTER_SEARCH_QUERY,
+            { search: last, page: args.page, perPage: args.limit },
+            { cache: "search" },
+          );
+        }
 
         const results = data.Page.characters;
 
@@ -479,7 +489,7 @@ export function registerInfoTools(server: FastMCP): void {
     },
     execute: async (args) => {
       try {
-        const data = await anilistClient.query<StaffSearchResponse>(
+        let data = await anilistClient.query<StaffSearchResponse>(
           STAFF_SEARCH_QUERY,
           {
             search: args.query,
@@ -489,6 +499,21 @@ export function registerInfoTools(server: FastMCP): void {
           },
           { cache: "search" },
         );
+
+        // AniList struggles with multi-word names; retry with last word
+        if (!data.Page.staff.length && args.query.includes(" ")) {
+          const last = args.query.split(" ").pop() ?? args.query;
+          data = await anilistClient.query<StaffSearchResponse>(
+            STAFF_SEARCH_QUERY,
+            {
+              search: last,
+              page: args.page,
+              perPage: args.limit,
+              mediaPerPage: args.mediaLimit,
+            },
+            { cache: "search" },
+          );
+        }
 
         const results = data.Page.staff;
 
