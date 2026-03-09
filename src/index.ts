@@ -17,6 +17,14 @@ import { registerCardTools } from "./tools/cards.js";
 import { registerResources } from "./resources.js";
 import { registerPrompts } from "./prompts.js";
 
+// Clear unresolved mcpb template vars (e.g. "${user_config.anilist_token}")
+if (process.env.ANILIST_USERNAME?.startsWith("${")) {
+  process.env.ANILIST_USERNAME = "";
+}
+if (process.env.ANILIST_TOKEN?.startsWith("${")) {
+  process.env.ANILIST_TOKEN = "";
+}
+
 // Both vars are optional - warn on missing so operators know what's available
 if (!process.env.ANILIST_USERNAME) {
   console.warn(
