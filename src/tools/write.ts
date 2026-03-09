@@ -63,17 +63,22 @@ async function getViewerName(): Promise<string> {
   return data.Viewer.name;
 }
 
-/** Snapshot a list entry before mutation */
+/** Snapshot a list entry before mutation (returns null if not on list) */
 async function snapshotByMediaId(
   mediaId: number,
 ): Promise<EntrySnapshot | null> {
   const userName = await getViewerName();
-  const data = await anilistClient.query<MediaListEntryResponse>(
-    MEDIA_LIST_ENTRY_QUERY,
-    { mediaId, userName },
-    { cache: null },
-  );
-  return data.MediaList ?? null;
+  try {
+    const data = await anilistClient.query<MediaListEntryResponse>(
+      MEDIA_LIST_ENTRY_QUERY,
+      { mediaId, userName },
+      { cache: null },
+    );
+    return data.MediaList ?? null;
+  } catch {
+    // 404 means not on list
+    return null;
+  }
 }
 
 /** Snapshot a list entry by its entry ID */
@@ -404,15 +409,18 @@ export function registerWriteTools(server: FastMCP): void {
 
         if (op.type === "update") {
           // Restore previous entry state
+          const vars: Record<string, unknown> = {
+            mediaId: op.before.mediaId,
+            status: op.before.status,
+            scoreRaw: op.before.score * 10,
+            progress: op.before.progress,
+          };
+          if (op.before.progressVolumes != null) {
+            vars.progressVolumes = op.before.progressVolumes;
+          }
           await anilistClient.query<SaveMediaListEntryResponse>(
             SAVE_MEDIA_LIST_ENTRY_MUTATION,
-            {
-              mediaId: op.before.mediaId,
-              status: op.before.status,
-              scoreRaw: op.before.score * 10,
-              progress: op.before.progress,
-              progressVolumes: op.before.progressVolumes,
-            },
+            vars,
             { cache: null },
           );
           const viewerName = await getViewerName();
@@ -436,15 +444,18 @@ export function registerWriteTools(server: FastMCP): void {
 
         if (op.type === "delete") {
           // Re-create the deleted entry
+          const vars: Record<string, unknown> = {
+            mediaId: op.before.mediaId,
+            status: op.before.status,
+            scoreRaw: op.before.score * 10,
+            progress: op.before.progress,
+          };
+          if (op.before.progressVolumes != null) {
+            vars.progressVolumes = op.before.progressVolumes;
+          }
           await anilistClient.query<SaveMediaListEntryResponse>(
             SAVE_MEDIA_LIST_ENTRY_MUTATION,
-            {
-              mediaId: op.before.mediaId,
-              status: op.before.status,
-              scoreRaw: op.before.score * 10,
-              progress: op.before.progress,
-              progressVolumes: op.before.progressVolumes,
-            },
+            vars,
             { cache: null },
           );
           const viewerName = await getViewerName();
@@ -458,15 +469,18 @@ export function registerWriteTools(server: FastMCP): void {
           let restored = 0;
           for (const item of op.entries) {
             try {
+              const vars: Record<string, unknown> = {
+                mediaId: item.before.mediaId,
+                status: item.before.status,
+                scoreRaw: item.before.score * 10,
+                progress: item.before.progress,
+              };
+              if (item.before.progressVolumes != null) {
+                vars.progressVolumes = item.before.progressVolumes;
+              }
               await anilistClient.query<SaveMediaListEntryResponse>(
                 SAVE_MEDIA_LIST_ENTRY_MUTATION,
-                {
-                  mediaId: item.before.mediaId,
-                  status: item.before.status,
-                  scoreRaw: item.before.score * 10,
-                  progress: item.before.progress,
-                  progressVolumes: item.before.progressVolumes,
-                },
+                vars,
                 { cache: null },
               );
               restored++;
