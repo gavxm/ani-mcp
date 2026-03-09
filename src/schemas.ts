@@ -85,6 +85,10 @@ export const DetailsInputSchema = z
       .describe(
         'Search by title if no ID is known (e.g. "Attack on Titan"). Finds the best match.',
       ),
+    type: z
+      .enum(["ANIME", "MANGA"])
+      .default("ANIME")
+      .describe("Media type to look up. Defaults to ANIME."),
   })
   .refine((data) => data.id !== undefined || data.title !== undefined, {
     message: "Provide either an id or a title to look up.",
@@ -582,6 +586,10 @@ export const RecommendationsInputSchema = z
   .object({
     id: z.number().int().positive().optional().describe("AniList media ID"),
     title: z.string().optional().describe("Search by title if no ID is known"),
+    type: z
+      .enum(["ANIME", "MANGA"])
+      .default("ANIME")
+      .describe("Media type. Defaults to ANIME."),
     limit: z
       .number()
       .int()
@@ -723,6 +731,10 @@ export const SimilarInputSchema = z
       .optional()
       .describe("AniList media ID to find similar titles for"),
     title: z.string().optional().describe("Search by title if no ID is known"),
+    type: z
+      .enum(["ANIME", "MANGA"])
+      .default("ANIME")
+      .describe("Media type. Defaults to ANIME."),
     limit: z
       .number()
       .int()
