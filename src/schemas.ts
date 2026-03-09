@@ -547,11 +547,7 @@ export type MalImportInput = z.infer<typeof MalImportInputSchema>;
 
 /** Input for importing a Kitsu user's completed list */
 export const KitsuImportInputSchema = z.object({
-  kitsuUsername: z
-    .string()
-    .min(2)
-    .max(30)
-    .describe("Kitsu username to import"),
+  kitsuUsername: z.string().min(2).max(30).describe("Kitsu username to import"),
   limit: z
     .number()
     .int()

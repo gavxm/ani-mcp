@@ -159,9 +159,7 @@ export function registerResources(server: FastMCP): void {
 
       // Cache stats
       const cacheStats = anilistClient.cacheStats();
-      lines.push(
-        `Cache: ${cacheStats.size}/${cacheStats.maxSize} entries`,
-      );
+      lines.push(`Cache: ${cacheStats.size}/${cacheStats.maxSize} entries`);
 
       return { text: lines.join("\n") };
     },

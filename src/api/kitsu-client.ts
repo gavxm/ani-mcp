@@ -3,8 +3,7 @@
 import pThrottle from "p-throttle";
 import pRetry, { AbortError } from "p-retry";
 
-const KITSU_BASE =
-  process.env.KITSU_API_URL || "https://kitsu.io/api/edge";
+const KITSU_BASE = process.env.KITSU_API_URL || "https://kitsu.io/api/edge";
 const FETCH_TIMEOUT_MS = 15_000;
 const PAGE_LIMIT = 20;
 

@@ -197,7 +197,10 @@ function kitsuEntriesToAniList(
   animeMap: Map<string, KitsuAnime>,
 ): AniListMediaListEntry[] {
   return entries
-    .filter((e) => e.attributes.ratingTwenty !== null && e.attributes.ratingTwenty > 0)
+    .filter(
+      (e) =>
+        e.attributes.ratingTwenty !== null && e.attributes.ratingTwenty > 0,
+    )
     .map((e) => {
       const animeId = e.relationships.anime.data?.id ?? "0";
       const anime = animeMap.get(animeId);

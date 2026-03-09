@@ -122,7 +122,8 @@ class AniListClient {
     if (cacheCategory) {
       const cacheKey = `${query}::${stableStringify(variables)}`;
       const cached = queryCache.get(cacheKey);
-      const isFresh = cached !== undefined && queryCache.getRemainingTTL(cacheKey) > 0;
+      const isFresh =
+        cached !== undefined && queryCache.getRemainingTTL(cacheKey) > 0;
 
       if (cached !== undefined && isFresh) {
         log("cache-hit", name);
