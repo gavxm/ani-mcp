@@ -190,13 +190,14 @@ describe("buildWrappedCardSvg", () => {
       totalChapters: 500,
       avgScore: 7.5,
       scoredCount: 35,
-      topRated: { title: "Steins;Gate", score: 10 },
+      topRated: { title: "Steins;Gate", score: 10, coverUrl: null },
       controversial: {
         title: "Sword Art Online",
         userScore: 9,
         communityScore: 65,
         gap: 25,
         direction: "above",
+        coverUrl: null,
       },
       topGenres: [
         { name: "Action", count: 20 },
@@ -256,6 +257,27 @@ describe("buildWrappedCardSvg", () => {
     const svg = buildWrappedCardSvg(data);
 
     expect(svg).toContain("No controversial picks");
+  });
+
+  it("renders cover art thumbnails when provided", () => {
+    const fakeCover = "data:image/png;base64,AAAA";
+    const data: WrappedCardData = {
+      ...baseData,
+      topRatedCoverB64: fakeCover,
+      controversialCoverB64: fakeCover,
+    };
+    const svg = buildWrappedCardSvg(data);
+
+    // Cover images rendered via clipPath + image elements
+    const clipMatches = svg.match(/clipPath id="cover-/g);
+    expect(clipMatches).toHaveLength(2);
+    expect(svg).toContain(`href="${fakeCover}"`);
+  });
+
+  it("omits cover art when B64 is null", () => {
+    const svg = buildWrappedCardSvg(baseData);
+
+    expect(svg).not.toContain("clipPath id=\"cover-");
   });
 });
 
@@ -330,6 +352,23 @@ describe("buildSeasonalRecapCardSvg", () => {
 
     expect(svg).toContain("<svg");
     expect(svg).toContain("No data");
+  });
+
+  it("renders cover art in top picks when provided", () => {
+    const fakeCover = "data:image/png;base64,BBBB";
+    const data: SeasonalRecapData = {
+      ...baseData,
+      topPicks: [
+        { title: "Chainsaw Man", score: 9, coverB64: fakeCover },
+        { title: "Spy x Family", score: 8 },
+      ],
+    };
+    const svg = buildSeasonalRecapCardSvg(data);
+
+    // First pick has cover, second does not
+    const clipMatches = svg.match(/clipPath id="cover-/g);
+    expect(clipMatches).toHaveLength(1);
+    expect(svg).toContain(`href="${fakeCover}"`);
   });
 });
 
