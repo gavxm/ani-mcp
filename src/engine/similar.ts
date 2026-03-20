@@ -16,6 +16,13 @@ const GENRE_WEIGHT = 0.4;
 const TAG_WEIGHT = 0.3;
 const REC_WEIGHT = 0.3;
 
+// Non-spoiler tag names from a media entry
+function tagNames(media: AniListMedia): Set<string> {
+  return new Set(
+    media.tags.filter((t) => !t.isMediaSpoiler).map((t) => t.name),
+  );
+}
+
 // === Similarity Engine ===
 
 /** Rank candidates by genre/tag overlap and community recommendation strength */
@@ -30,9 +37,7 @@ export function rankSimilar(
   const maxRating = Math.max(1, ...recRatings.values());
 
   const sourceGenres = new Set(source.genres);
-  const sourceTags = new Set(
-    source.tags.filter((t) => !t.isMediaSpoiler).map((t) => t.name),
-  );
+  const sourceTags = tagNames(source);
 
   const results: SimilarResult[] = [];
 
@@ -53,9 +58,7 @@ export function rankSimilar(
     }
 
     // Tag overlap: Jaccard on non-spoiler tags
-    const candidateTags = new Set(
-      candidate.tags.filter((t) => !t.isMediaSpoiler).map((t) => t.name),
-    );
+    const candidateTags = tagNames(candidate);
     const tagIntersection = [...sourceTags].filter((t) => candidateTags.has(t));
     const tagUnion = new Set([...sourceTags, ...candidateTags]);
     const tagOverlap =
