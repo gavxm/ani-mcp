@@ -3,12 +3,19 @@
 import sharp from "sharp";
 import type { TasteProfile, WeightedItem, FormatBreakdown } from "./taste.js";
 import type { WrappedStats } from "./wrapped.js";
+import { CARD_WIDTH, CARD_HEIGHT, COMPAT_CARD_HEIGHT } from "../constants.js";
+
+// === Logging ===
+
+const DEBUG = process.env.DEBUG === "true" || process.env.DEBUG === "1";
+
+function log(event: string, detail?: string): void {
+  if (!DEBUG) return;
+  const msg = detail ? `[ani-mcp] ${event}: ${detail}` : `[ani-mcp] ${event}`;
+  console.error(msg);
+}
 
 // === Constants ===
-
-const CARD_WIDTH = 800;
-const CARD_HEIGHT = 560;
-const COMPAT_CARD_HEIGHT = 640;
 
 // Brand palette (from assets/icon.svg)
 const BRAND_BLUE = "#02A9FF";
@@ -41,7 +48,8 @@ export async function fetchAvatarB64(url: string): Promise<string | null> {
     const buf = Buffer.from(await res.arrayBuffer());
     const contentType = res.headers.get("content-type") ?? "image/jpeg";
     return `data:${contentType};base64,${buf.toString("base64")}`;
-  } catch {
+  } catch (err) {
+    log("avatar fetch failed", err instanceof Error ? err.message : String(err));
     return null;
   }
 }
